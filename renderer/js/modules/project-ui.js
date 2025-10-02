@@ -1,6 +1,28 @@
 // Project UI Module
 // Handles project detail population, card updates, edit & delete modal creation, and thumbnail actions.
 
+// Persistent in-memory resized thumbnail cache (data URL) – survives view switches
+if (!window.__CONSTELLATION) window.__CONSTELLATION = {};
+if (!window.__CONSTELLATION.thumbCache) {
+  window.__CONSTELLATION.thumbCache = {
+    data: new Map(),            // originalPath -> dataURL (resized)
+    inflight: new Map(),        // originalPath -> Promise
+    stats: { hits:0, misses:0, processed:0 },
+    maxEntries: 500,
+    prune() {
+      const { data, maxEntries } = this;
+      if (data.size <= maxEntries) return;
+      // Simple FIFO prune (Map preserves insertion order)
+      const excess = data.size - maxEntries;
+      let i = 0;
+      for (const key of data.keys()) {
+        if (i++ >= excess) break;
+        data.delete(key);
+      }
+    }
+  };
+}
+
 class ProjectUI {
   constructor(options = {}) {
     this.getProjects = options.getProjects || (() => []);
@@ -8,8 +30,190 @@ class ProjectUI {
     this.setCurrentProject = options.setCurrentProject || (() => {});
     this.saveProjects = options.saveProjects || (async () => {});
     this.findThumbnail = options.findThumbnail || (async () => ({ success:false }));
+
+    // Configurable thumbnail processing settings
+    this.thumbMaxSize = 480;      // max width/height for project grid
+    this.thumbQuality = 0.70;     // JPEG quality
+    this.concurrentDecode = 4;    // parallel decode limit
+    this.decodeQueue = [];
+    this.activeDecodes = 0;
   }
 
+  // ---------- Internal Thumbnail Helpers ----------
+  _getCache() { return window.__CONSTELLATION.thumbCache; }
+
+  _scheduleDecode(task) {
+    this.decodeQueue.push(task);
+    this._drainDecodeQueue();
+  }
+
+  _drainDecodeQueue() {
+    while (this.activeDecodes < this.concurrentDecode && this.decodeQueue.length) {
+      const task = this.decodeQueue.shift();
+      this.activeDecodes++;
+      
+      // Use requestIdleCallback like calendar for better performance
+      const executeTask = () => {
+        task().finally(() => { 
+          this.activeDecodes--; 
+          this._drainDecodeQueue(); 
+        });
+      };
+
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(executeTask, { timeout: 100 });
+      } else {
+        setTimeout(executeTask, 0);
+      }
+    }
+  }
+
+  async _ensureResized(srcPath) {
+    const cache = this._getCache();
+    if (!srcPath) return null;
+
+    if (cache.data.has(srcPath)) { cache.stats.hits++; return cache.data.get(srcPath); }
+    if (cache.inflight.has(srcPath)) return cache.inflight.get(srcPath);
+
+    cache.stats.misses++;
+    
+    const promise = new Promise((resolve) => {
+      const loadImage = () => {
+        return new Promise((imageResolve, imageReject) => {
+          const img = new Image();
+          
+          img.onload = async () => {
+            try {              
+              // Create thumbnail like calendar does
+              const thumbnailUrl = await this._createThumbnail(srcPath, img);
+              cache.data.set(srcPath, thumbnailUrl);
+              cache.stats.processed++;
+              cache.prune();
+              imageResolve(thumbnailUrl);
+            } catch (error) {
+              console.warn('[ProjectUI] Failed to process image:', error);
+              const fallbackUrl = `url('file://${srcPath.replace(/'/g, "%27")}')`;
+              cache.data.set(srcPath, fallbackUrl);
+              imageResolve(fallbackUrl);
+            }
+          };
+          
+          img.onerror = (e) => {
+            console.warn('[ProjectUI] Image load failed for:', srcPath);
+            imageReject(e);
+          };
+          
+          img.src = `file://${srcPath}`;
+        });
+      };
+
+      // Use requestIdleCallback like calendar
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(async () => {
+          try {
+            const result = await loadImage();
+            resolve(result);
+          } catch (e) {
+            resolve(null);
+          }
+        }, { timeout: 1000 });
+      } else {
+        setTimeout(async () => {
+          try {
+            const result = await loadImage();
+            resolve(result);
+          } catch (e) {
+            resolve(null);
+          }
+        }, 0);
+      }
+    }).finally(() => cache.inflight.delete(srcPath));
+
+    cache.inflight.set(srcPath, promise);
+    return promise;
+  }
+
+  async _createThumbnail(imagePath, originalImage) {
+    return new Promise((resolve) => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Calculate dimensions maintaining aspect ratio
+        const { width: originalWidth, height: originalHeight } = originalImage;
+        const maxSize = this.thumbMaxSize;
+        
+        let { width, height } = originalImage;
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Enable image smoothing for better quality
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Draw the resized image
+        ctx.drawImage(originalImage, 0, 0, width, height);
+        
+        // Convert to data URL for CSS usage
+        const thumbnailDataUrl = canvas.toDataURL('image/jpeg', this.thumbQuality);
+        const cssUrl = `url('${thumbnailDataUrl}')`;
+        
+        // Clean up canvas
+        canvas.width = 0;
+        canvas.height = 0;
+        
+        resolve(cssUrl);
+      } catch (error) {
+        console.warn('[ProjectUI] Failed to create thumbnail:', error);
+        // Fallback to original image URL
+        const fallbackUrl = `url('file://${imagePath.replace(/'/g, "%27")}')`;
+        resolve(fallbackUrl);
+      }
+    });
+  }
+
+  async _applyThumb(thumbEl, originalPath) {
+    if (!originalPath || !thumbEl) return;
+    
+    const cached = await this._ensureResized(originalPath);
+    if (!cached) { 
+      thumbEl.classList.add('thumb-error'); 
+      return; 
+    }
+    // If element was removed or reused, guard
+    if (!document.body.contains(thumbEl)) return;
+    
+    requestAnimationFrame(() => {
+      // Use background-image approach like calendar for reliability
+      thumbEl.style.cssText += `
+        background-image: ${cached};
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        width: 100%;
+        height: 100%;
+        min-height: 120px;
+        display: block;
+      `;
+      thumbEl.classList.add('thumb-loaded', 'has-image');
+      const spinner = thumbEl.parentElement?.querySelector('.thumb-spinner');
+      if (spinner) spinner.remove();
+    });
+  }
+
+  // -------------- Existing Methods (Unchanged unless integrating) --------------
   viewProject(projectId) {
     const projects = this.getProjects();
     const project = projects.find(p => p.id == projectId);
@@ -110,7 +314,17 @@ class ProjectUI {
     const iconEl = targetCard.querySelector('.project-icon');
     if (iconEl) {
       if (project.thumbnailPath) {
-        iconEl.innerHTML = `<img src="file://${project.thumbnailPath}" alt="Project thumbnail">`;
+        const cache = this._getCache();
+        const p = project.thumbnailPath;
+        if (cache.data.has(p)) {
+          // Apply cached background-image
+          iconEl.innerHTML = `<div class="project-thumb thumb-loaded has-image" style="background-image: ${cache.data.get(p)}; background-size: cover; background-position: center; background-repeat: no-repeat;"></div>`;
+        } else {
+          // Insert skeleton while scheduling decode
+          iconEl.innerHTML = `<div class="project-thumb lazy-thumb" data-original="${p}"></div><div class="thumb-spinner"></div>`;
+          const thumbEl = iconEl.querySelector('.project-thumb');
+          this._scheduleDecode(() => this._applyThumb(thumbEl, p));
+        }
       } else {
         iconEl.innerHTML = `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <circle cx="12" cy="12" r="10"/>
@@ -287,76 +501,11 @@ class ProjectUI {
     </svg>`;
   }
 
-  renderProjectGrid(containerId, projectList, emptyMessage) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    if (projectList.length === 0) {
-      container.innerHTML = `<div class="empty-state"><p>${emptyMessage}</p></div>`;
-      return;
-    }
-    // For large lists, progressively render to avoid blocking
-    // Adaptive batch size: larger batches reduce overhead when many projects
-    const base = 40;
-    const BATCH_SIZE = projectList.length > 400 ? 80 : projectList.length > 200 ? 60 : base;
-    container.innerHTML = '';
-    let index = 0;
-    const total = projectList.length;
-    const frag = () => document.createDocumentFragment();
-    // Reuse one observer for this grid build
-    this._gridImageObserver?.disconnect();
-    if ('IntersectionObserver' in window) {
-      this._gridImageObserver = new IntersectionObserver((entries, obs) => {
-        entries.forEach(e => {
-          if (e.isIntersecting) {
-            const img = e.target;
-            if (img.dataset.src) {
-              img.src = img.dataset.src;
-              img.addEventListener('load', () => {
-                img.classList.add('loaded');
-                img.parentElement?.querySelector('.thumb-spinner')?.remove();
-              }, { once: true });
-              img.addEventListener('error', () => {
-                img.classList.add('error');
-                img.parentElement?.querySelector('.thumb-spinner')?.remove();
-              }, { once: true });
-              delete img.dataset.src;
-            }
-            obs.unobserve(img);
-          }
-        });
-      }, { rootMargin: '150px' });
-    }
-    const observeNewImages = (scope) => {
-      if (!this._gridImageObserver) return;
-      scope.querySelectorAll('img.lazy-thumb[data-src]').forEach(img => this._gridImageObserver.observe(img));
-    };
-    const perfLog = (label, t0) => { if (window.__CONST_DEBUG_PERF) console.log('[ProjectGridPerf]', label, (performance.now()-t0).toFixed(1)+'ms'); };
-    const renderBatch = () => {
-      const t0 = performance.now();
-      const fragment = frag();
-      const end = Math.min(index + BATCH_SIZE, total);
-      for (let i = index; i < end; i++) {
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = this._projectCardMarkup(projectList[i]);
-        fragment.appendChild(wrapper.firstElementChild);
-      }
-      container.appendChild(fragment);
-      observeNewImages(container);
-      index = end;
-      perfLog('batch '+end+'/'+total, t0);
-      if (index < total) {
-        // Schedule next batch after yielding to UI
-        (window.requestIdleCallback ? window.requestIdleCallback(renderBatch, { timeout: 120 }) : setTimeout(renderBatch, 16));
-      } else {
-        perfLog('all batches complete', t0);
-      }
-    };
-    renderBatch();
-  }
-
+  // Override project card markup to use div with background-image like calendar
   _projectCardMarkup(project) {
-    const thumb = project.thumbnailPath ?
-      `<img class="project-thumb lazy-thumb" data-src="file://${project.thumbnailPath}" alt="Project thumbnail" loading="lazy" decoding="async" fetchpriority="low">` :
+    const hasThumb = !!project.thumbnailPath;
+    const thumb = hasThumb ?
+      `<div class="project-thumb lazy-thumb" data-original="${project.thumbnailPath}"></div>` :
       `<div class="thumb-placeholder skeleton"></div>`;
     const targetSeconds = (project.integrationTargetHours || 0) * 3600;
     const pctRaw = targetSeconds > 0 ? (project.totalTime / targetSeconds) * 100 : 0;
@@ -377,36 +526,78 @@ class ProjectUI {
       </div>`;
   }
 
-  // TODO: Implement background thumbnail downscaling pipeline.
-  // Strategy:
-  // 1. Main process generates cached ~512px wide JPEGs into .constellation-thumbnails/ if original larger.
-  // 2. Store path on project.thumbnailPathOptimized and prefer it for grid (fallback to original).
-  // 3. Consider using createImageBitmap + OffscreenCanvas for future async resizing.
+  renderProjectGrid(containerId, projectList, emptyMessage) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (projectList.length === 0) {
+      container.innerHTML = `<div class="empty-state"><p>${emptyMessage}</p></div>`;
+      return;
+    }
 
-  _activateLazyImages(scope) {
-    const imgs = scope.querySelectorAll('img.lazy-thumb');
-    const onLoad = (img) => {
-      img.classList.add('loaded');
-      const spinner = img.parentElement?.querySelector('.thumb-spinner');
-      if (spinner) spinner.remove();
+    const cache = this._getCache();
+    const base = 40; // baseline batch size
+    const BATCH_SIZE = projectList.length > 400 ? 80 : projectList.length > 200 ? 60 : base;
+    container.innerHTML = '';
+    let index = 0;
+    const total = projectList.length;
+
+    // Clean up old observer
+    this._gridImageObserver?.disconnect();
+    if ('IntersectionObserver' in window) {
+      this._gridImageObserver = new IntersectionObserver((entries, obs) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            const thumbEl = e.target;
+            const original = thumbEl.getAttribute('data-original');
+            if (original) {
+              this._scheduleDecode(() => this._applyThumb(thumbEl, original));
+              obs.unobserve(thumbEl);
+            }
+          }
+        });
+      }, { rootMargin: '150px', threshold: 0.01 });
+    }
+
+    const observeNew = (scope) => {
+      if (!this._gridImageObserver) return;
+      const thumbElements = scope.querySelectorAll('.lazy-thumb[data-original]');
+      thumbElements.forEach(thumbEl => {
+        const p = thumbEl.getAttribute('data-original');
+        if (p && cache.data.has(p)) {
+          this._applyThumb(thumbEl, p);
+        } else {
+          this._gridImageObserver.observe(thumbEl);
+        }
+      });
     };
-    const loadImg = (img) => {
-      if (img.dataset.src) {
-        img.src = img.dataset.src;
-        img.addEventListener('load', () => onLoad(img), { once: true });
-        img.addEventListener('error', () => { img.classList.add('error'); const sp=img.parentElement?.querySelector('.thumb-spinner'); if (sp) sp.remove(); }, { once: true });
-        delete img.dataset.src;
+
+    const frag = () => document.createDocumentFragment();
+    const perfLog = (label, t0) => { if (window.__CONST_DEBUG_PERF) console.log('[ProjectGridPerf]', label, (performance.now()-t0).toFixed(1)+'ms'); };
+
+    const renderBatch = () => {
+      const t0 = performance.now();
+      const fragment = frag();
+      const end = Math.min(index + BATCH_SIZE, total);
+      for (let i = index; i < end; i++) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = this._projectCardMarkup(projectList[i]);
+        fragment.appendChild(wrapper.firstElementChild);
+      }
+      container.appendChild(fragment);
+      observeNew(container);
+      index = end;
+      perfLog('batch '+end+'/'+total, t0);
+      if (index < total) {
+        (window.requestIdleCallback ? window.requestIdleCallback(renderBatch, { timeout: 120 }) : setTimeout(renderBatch, 16));
+      } else {
+        perfLog('all batches complete', t0);
+        if (window.__CONST_DEBUG_PERF) console.log('[ThumbCacheStats]', cache.stats);
       }
     };
-    if ('IntersectionObserver' in window) {
-      const observer = new IntersectionObserver((entries, obs) => {
-        entries.forEach(e => { if (e.isIntersecting) { loadImg(e.target); obs.unobserve(e.target); } });
-      }, { rootMargin: '100px' });
-      imgs.forEach(img => observer.observe(img));
-    } else {
-      imgs.forEach(loadImg);
-    }
+    renderBatch();
   }
+
+  _activateLazyImages(scope) { /* deprecated with new pipeline */ }
 }
 
 window.ProjectUI = ProjectUI;
