@@ -556,6 +556,9 @@ body {
 
 .calendar-grid {
   margin-top: 24px;
+  /* Performance optimizations */
+  contain: layout style;
+  will-change: contents;
 }
 
 .calendar-weekdays {
@@ -563,6 +566,7 @@ body {
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
   margin-bottom: 8px;
+  contain: layout style;
 }
 
 .weekday {
@@ -573,17 +577,20 @@ body {
   color: var(--text-secondary);
   background: var(--bg-tertiary);
   border-radius: 6px;
+  contain: layout paint style;
 }
 
 .calendar-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
+  contain: layout style;
 }
 
 .calendar-spacer {
   /* Invisible spacer cell to maintain grid positioning */
   aspect-ratio: 1;
+  contain: layout paint style;
 }
 
 .calendar-day {
@@ -593,10 +600,23 @@ body {
   border-radius: 8px;
   padding: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.2s ease;
   position: relative;
   overflow: hidden;
+  /* Performance optimizations */
   content-visibility: auto;
+  contain: layout paint style;
+  transform: translateZ(0); /* Force GPU acceleration for smoother rendering */
+  backface-visibility: hidden;
+  /* Prevent hover repaints for background images */
+  will-change: border-color;
+  /* Prevent expensive image reprocessing on hover */
+  isolation: isolate;
+}
+
+.calendar-day:hover {
+  border-color: var(--accent-purple);
+  /* Force containment during hover to prevent expensive repaints */
   contain: layout paint style;
 }
 
@@ -604,33 +624,117 @@ body {
   border-color: var(--accent-purple);
 }
 
-.calendar-day.has-image::before {
+/* Optimize hover for days with photos to prevent expensive repaints */
+.calendar-day.day-with-photo {
+  color: #fff;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* Critical: prevent hover from triggering background repaints */
+  will-change: border-color; /* Only border changes on hover */
+  /* Use pointer-events to reduce hover processing overhead */
+  pointer-events: auto;
+}
+
+.calendar-day.day-with-photo:hover {
+  /* Simplified hover - only change border, no background processing */
+  border-color: var(--accent-purple);
+  /* Explicitly prevent any background recalculation */
+  background-size: cover;
+  background-position: center;
+  /* Force style containment during hover */
+  contain: layout paint;
+}
+
+/* Disable expensive transitions for image days */
+.calendar-day.day-with-photo {
+  transition: border-color 0.1s ease; /* Faster transition for image days */
+}
+
+.calendar-day.today {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+/* Scheduled image indicator (before image loads) */
+.calendar-day.has-scheduled-image::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  z-index: 3;
+  opacity: 0.7;
+}
+
+/* Loading state for images */
+.calendar-day.loading-image {
+  background: var(--bg-secondary);
+  position: relative;
+}
+
+.calendar-day.loading-image::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.7));
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  animation: imageShimmer 1.5s infinite;
+  z-index: 1;
 }
 
-/* Calendar day with photo (from processed jpg) */
+@keyframes imageShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Calendar day with photo (loaded successfully) */
 .calendar-day.day-with-photo {
   color: #fff;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* Critical: prevent hover from triggering background repaints */
+  will-change: border-color; /* Only border changes on hover */
+  /* Hardware acceleration for background images */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  /* Prevent layout thrashing */
+  contain: layout paint style;
 }
+
 .calendar-day.day-with-photo::before {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0.65));
   z-index: 1;
+  pointer-events: none;
 }
+
 .calendar-day.day-with-photo .day-number {
   text-shadow: 0 1px 2px rgba(0,0,0,0.9);
   position: relative;
   z-index: 2;
+  font-weight: 700; /* Make number more visible on images */
 }
+
 .calendar-day.day-with-photo .day-dot {
   box-shadow: 0 0 4px rgba(0,0,0,0.6);
   position: relative;
   z-index: 2;
+}
+
+/* Remove the scheduled indicator when image loads */
+.calendar-day.day-with-photo.has-scheduled-image::after {
+  display: none;
 }
 
 .day-number {

@@ -218,16 +218,12 @@ ipcMain.handle('save-library-database', async (event, data) => {
 // Thumbnail operations
 ipcMain.handle('find-project-thumbnail', async (event, projectName, storagePath) => {
   try {
-    console.log('Finding thumbnail for project:', projectName, 'in:', storagePath);
     
     // Look for project folder in storage path
     const projectFolders = await findProjectFolders(storagePath, projectName);
-    console.log('Found project folders:', projectFolders);
     
     for (const projectFolder of projectFolders) {
-      console.log('Searching for JPGs in:', projectFolder);
       const thumbnail = await findNewestJpgInDirectory(projectFolder);
-      console.log('Found thumbnail:', thumbnail);
       if (thumbnail) {
         return { success: true, thumbnailPath: thumbnail };
       }
@@ -302,35 +298,73 @@ ipcMain.handle('scan-project-files', async (event, projectName, storagePath) => 
 });
 
 // Calendar images: return a mapping of date -> latest JPG path among all project folders
-ipcMain.handle('get-calendar-images', async (event, storagePath) => {
+// Now with intelligent caching to avoid repeated filesystem scans
+ipcMain.handle('get-calendar-images', async (event, storagePath, forceRefresh = false) => {
   try {
-    const dateToImage = {}; // { 'YYYY-MM-DD': { path, mtime } }
+    const settings = store.get('settings', {});
+    if (!settings.storagePath) return { success: false, error: 'No storage path configured' };
+    
+    const dbPath = path.join(settings.storagePath, '.constellation');
+    let dbData = {};
+    
+    // Load existing database
+    try {
+      const data = await fs.readFile(dbPath, 'utf8');
+      dbData = JSON.parse(data);
+    } catch {
+      dbData = { version: '1.0', calendarImages: { lastScan: null, dateToImage: {} } };
+    }
+    
+    // Check if we need to refresh the cache
+    const calendarCache = dbData.calendarImages || { lastScan: null, dateToImage: {} };
+    const lastScanTime = calendarCache.lastScan ? new Date(calendarCache.lastScan) : null;
+    const now = new Date();
+    const cacheAge = lastScanTime ? (now - lastScanTime) / (1000 * 60 * 60) : Infinity; // hours
+    
+    // Refresh if forced, cache is older than 6 hours, or no cache exists
+    if (forceRefresh || cacheAge > 6 || !lastScanTime) {
+      const dateToImage = {}; // { 'YYYY-MM-DD': { path, mtime } }
 
-    async function walk(dir, depth = 0) {
-      if (depth > 4) return; // avoid deep recursion
-      let entries;
-      try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { return; }
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          if (entry.name.startsWith('.')) continue;
-          await walk(fullPath, depth + 1);
-        } else if (entry.isFile() && /\.(jpe?g)$/i.test(entry.name)) {
-          try {
-            const stats = await fs.stat(fullPath);
-            const dateKey = stats.mtime.toISOString().split('T')[0];
-            const existing = dateToImage[dateKey];
-            if (!existing || stats.mtime > existing.mtime) {
-              dateToImage[dateKey] = { path: fullPath, mtime: stats.mtime };
-            }
-          } catch {/* ignore */}
+      async function walk(dir, depth = 0) {
+        if (depth > 4) return; // avoid deep recursion
+        let entries;
+        try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { return; }
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            if (entry.name.startsWith('.')) continue;
+            await walk(fullPath, depth + 1);
+          } else if (entry.isFile() && /\.(jpe?g)$/i.test(entry.name)) {
+            try {
+              const stats = await fs.stat(fullPath);
+              const dateKey = stats.mtime.toISOString().split('T')[0];
+              const existing = dateToImage[dateKey];
+              if (!existing || stats.mtime > existing.mtime) {
+                dateToImage[dateKey] = { path: fullPath, mtime: stats.mtime };
+              }
+            } catch {/* ignore */}
+          }
         }
       }
-    }
 
-    await walk(storagePath);
-    const result = Object.fromEntries(Object.entries(dateToImage).map(([date, obj]) => [date, obj.path]));
-    return { success: true, images: result };
+      await walk(storagePath);
+      
+      // Update database with new cache
+      dbData.calendarImages = {
+        lastScan: now.toISOString(),
+        dateToImage
+      };
+      
+      // Save updated database
+      await fs.writeFile(dbPath, JSON.stringify(dbData, null, 2), 'utf8');
+    } //else {
+      //console.log(`Using cached calendar images (${cacheAge.toFixed(1)} hours old)`);
+    //}
+    
+    const result = Object.fromEntries(
+      Object.entries(dbData.calendarImages.dateToImage).map(([date, obj]) => [date, obj.path])
+    );
+    return { success: true, images: result, fromCache: cacheAge <= 6 };
   } catch (error) {
     console.error('Error getting calendar images:', error);
     return { success: false, error: error.message };

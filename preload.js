@@ -19,5 +19,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectCustomThumbnail: () => ipcRenderer.invoke('select-custom-thumbnail'),
   copyThumbnailToProject: (sourcePath, projectName, storagePath) => ipcRenderer.invoke('copy-thumbnail-to-project', sourcePath, projectName, storagePath),
   scanProjectFiles: (projectName, storagePath) => ipcRenderer.invoke('scan-project-files', projectName, storagePath),
-  getCalendarImages: (storagePath) => ipcRenderer.invoke('get-calendar-images', storagePath)
+  getCalendarImages: (storagePath, forceRefresh) => ipcRenderer.invoke('get-calendar-images', storagePath, forceRefresh)
 });
