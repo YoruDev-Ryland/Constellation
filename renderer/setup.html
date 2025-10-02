@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AstroOrganizer - Setup</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="setup-page">
+  <div class="titlebar">
+    <div class="titlebar-drag">AstroOrganizer - Setup</div>
+    <div class="titlebar-controls">
+      <button class="titlebar-btn" id="minimizeBtn">
+        <svg width="12" height="12" viewBox="0 0 12 12"><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor"/></svg>
+      </button>
+      <button class="titlebar-btn" id="maximizeBtn">
+        <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" fill="none" stroke="currentColor"/></svg>
+      </button>
+      <button class="titlebar-btn close" id="closeBtn">
+        <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="setup-container">html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Constellation - Setup</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="setup-page">
+  <div class="setup-container">
+    <div class="setup-header">
+      <div class="logo">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <circle cx="24" cy="24" r="20" stroke="url(#gradient)" stroke-width="2"/>
+          <circle cx="24" cy="24" r="3" fill="url(#gradient)"/>
+          <circle cx="15" cy="18" r="1.5" fill="url(#gradient)"/>
+          <circle cx="33" cy="20" r="1.5" fill="url(#gradient)"/>
+          <circle cx="30" cy="32" r="1.5" fill="url(#gradient)"/>
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#667eea"/>
+              <stop offset="100%" style="stop-color:#764ba2"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <h1>Constellation</h1>
+      </div>
+      <p class="subtitle">Let's get your astrophotography workflow organized</p>
+    </div>
+
+    <div class="setup-content">
+      <div class="setup-step active" id="step1">
+        <h2>Storage Location</h2>
+        <p>Where do you store your astrophotography images?</p>
+        
+        <div class="input-group">
+          <input type="text" id="storagePath" placeholder="Select a folder..." readonly>
+          <button class="btn-primary" id="selectStorageBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
+            </svg>
+            Browse
+          </button>
+        </div>
+      </div>
+
+      <div class="setup-step" id="step2">
+        <h2>Cleanup Folders</h2>
+        <p>Which folder names contain temporary processing files that can be safely deleted?</p>
+        
+        <div class="cleanup-tags" id="cleanupTags">
+          <!-- Tags will be added here -->
+        </div>
+        
+        <div class="input-group">
+          <input type="text" id="cleanupInput" placeholder="e.g., Process, PI, temp...">
+          <button class="btn-secondary" id="addCleanupBtn">Add</button>
+        </div>
+        
+        <p class="hint">Leave empty if you don't want to use the cleanup feature</p>
+      </div>
+
+      <div class="setup-step" id="step3">
+        <h2>Ignore Folders</h2>
+        <p>Which folders should be completely ignored during scanning?</p>
+        
+        <div class="cleanup-tags" id="ignoreTags">
+          <!-- Tags will be added here -->
+        </div>
+        
+        <div class="input-group">
+          <input type="text" id="ignoreInput" placeholder="Add folder name to ignore...">
+          <button class="btn-secondary" id="addIgnoreBtn">Add</button>
+        </div>
+        
+        <p class="hint">Common software folders are already included by default</p>
+      </div>
+
+      <div class="setup-step" id="step4">
+        <h2>Background Scanning</h2>
+        <p>Keep your library up-to-date with automatic background scanning</p>
+        
+        <div class="setting-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="enableBackgroundScan" checked>
+            <span class="checkmark"></span>
+            Enable background scanning
+          </label>
+          <p class="setting-description">Silently scan for new images while you work</p>
+        </div>
+        
+        <div class="setting-group" id="backgroundFrequencyGroup">
+          <label for="backgroundScanHours">Scan frequency:</label>
+          <select id="backgroundScanHours">
+            <option value="1">Every hour</option>
+            <option value="2">Every 2 hours</option>
+            <option value="4" selected>Every 4 hours</option>
+            <option value="8">Every 8 hours</option>
+            <option value="24">Once daily</option>
+          </select>
+        </div>
+        
+        <p class="hint">Background scans are optimized to avoid performance impact</p>
+      </div>
+
+      <div class="setup-actions">
+        <button class="btn-large btn-primary" id="completeSetupBtn" disabled>
+          Complete Setup
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M5 12H19M19 12L12 5M19 12L12 19"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/setup.js"></script>
+</body>
+</html>

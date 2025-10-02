@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Constellation</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="titlebar">
+    <div class="titlebar-drag">Constellation</div>
+    <div class="titlebar-controls">
+      <button class="titlebar-btn" id="minimizeBtn">
+        <svg width="12" height="12" viewBox="0 0 12 12"><line x1="0" y1="6" x2="12" y2="6" stroke="currentColor"/></svg>
+      </button>
+      <button class="titlebar-btn" id="maximizeBtn">
+        <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" fill="none" stroke="currentColor"/></svg>
+      </button>
+      <button class="titlebar-btn close" id="closeBtn">
+        <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <aside class="sidebar">
+      <nav class="nav-menu">
+        <a href="#" class="nav-item active" data-view="dashboard">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Dashboard
+        </a>
+        <a href="#" class="nav-item" data-view="projects">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
+          </svg>
+          Projects
+        </a>
+        <a href="#" class="nav-item" data-view="calendar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+            <line x1="9" y1="4" x2="9" y2="2"/>
+            <line x1="15" y1="4" x2="15" y2="2"/>
+          </svg>
+          Calendar
+        </a>
+        <a href="#" class="nav-item" data-view="tools">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          Tools
+        </a>
+        <a href="#" class="nav-item" data-view="cleanup">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M3 6h18M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2m3 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6h14zM10 11v6M14 11v6"/>
+          </svg>
+          Cleanup
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="btn-icon" id="refreshBtn" title="Refresh data">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          </svg>
+        </button>
+        <button class="btn-icon" id="settingsBtn" title="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <!-- Dashboard View -->
+      <div class="view active" id="dashboardView">
+        <header class="content-header">
+          <h1>Dashboard</h1>
+          <div class="header-actions">
+            <button class="btn-secondary" id="verboseToggleBtn" title="Toggle verbose logging">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14,2 14,8 20,8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10,9 9,9 8,9"/>
+              </svg>
+              Verbose Off
+            </button>
+            <button class="btn-primary" id="scanBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              Scan Library
+            </button>
+          </div>
+        </header>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon purple">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <h3 id="totalTargets">0</h3>
+              <p>Total Targets</p>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon blue">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <h3 id="totalImages">0</h3>
+              <p>Total Images</p>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon green">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <h3 id="totalTime">0h</h3>
+              <p>Total Integration</p>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon orange">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3v18"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <h3 id="cleanupSize">0 GB</h3>
+              <p>Can Be Cleaned</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Recent Targets</h2>
+          <div id="recentTargets" class="targets-list">
+            <div class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              <p>No targets found yet. Click "Scan Library" to get started!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Projects View -->
+      <div class="view" id="projectsView">
+        <header class="content-header">
+          <h1>Projects</h1>
+          <div class="header-actions">
+            <div class="tab-group">
+              <button class="tab-btn active" data-tab="current">Current</button>
+              <button class="tab-btn" data-tab="completed">Completed</button>
+            </div>
+          </div>
+        </header>
+
+        <div class="tab-content active" id="currentProjects">
+          <div class="projects-grid" id="currentProjectsGrid">
+            <div class="empty-state">
+              <p>No current projects. Start imaging to create projects!</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="completedProjects">
+          <div class="projects-grid" id="completedProjectsGrid">
+            <div class="empty-state">
+              <p>No completed projects yet.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Project Details View -->
+      <div class="view" id="projectDetailsView">
+        <header class="content-header">
+          <div class="header-back">
+            <button class="btn-icon" id="backToProjectsBtn" title="Back to Projects">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <div>
+              <h1 id="projectDetailsTitle">Project Details</h1>
+              <p class="project-subtitle" id="projectDetailsSubtitle">Loading...</p>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button class="btn-secondary" id="editProjectBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+              Edit
+            </button>
+            <button class="btn-success" id="completeProjectBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              Complete
+            </button>
+            <button class="btn-danger" id="deleteProjectBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 6h18M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2m3 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6h14zM10 11v6M14 11v6"/>
+              </svg>
+              Delete
+            </button>
+          </div>
+        </header>
+
+        <div class="project-details-content">
+          <div class="project-overview">
+            <div class="overview-stats">
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="9" cy="9" r="2"/>
+                    <path d="M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="projectImageCount">0</div>
+                  <div class="stat-label">Images</div>
+                </div>
+              </div>
+              
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="projectTotalTime">0h</div>
+                  <div class="stat-label">Total Time</div>
+                </div>
+              </div>
+              
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V6a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="projectFilterCount">0</div>
+                  <div class="stat-label">Filters</div>
+                </div>
+              </div>
+              
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                    <line x1="9" y1="4" x2="9" y2="2"/>
+                    <line x1="15" y1="4" x2="15" y2="2"/>
+                  </svg>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="projectCreatedDate">-</div>
+                  <div class="stat-label">Created</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="project-details-grid">
+            <div class="detail-section">
+              <h3>Acquisition Progress</h3>
+              <div class="chart-container">
+                <canvas id="acquisitionChart" height="320"></canvas>
+              </div>
+              <button id="debugChartBtn" class="btn-secondary" style="margin-top: 12px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M9 12l2 2 4-4"/>
+                  <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/>
+                </svg>
+                Debug Chart Data
+              </button>
+            </div>
+
+            <div class="detail-section">
+              <h3>Filter Breakdown</h3>
+              <div class="filters-list" id="projectFiltersList">
+                <!-- Filter details will be populated here -->
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <h3>Project Information</h3>
+              <div class="info-list" id="projectInfoList">
+                <!-- Project info will be populated here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar View -->
+      <div class="view" id="calendarView">
+        <header class="content-header">
+          <h1>Imaging Calendar</h1>
+          <div class="calendar-controls">
+            <button class="btn-icon" id="prevMonth">←</button>
+            <span id="currentMonth">January 2025</span>
+            <button class="btn-icon" id="nextMonth">→</button>
+          </div>
+        </header>
+
+        <div id="calendar" class="calendar-grid">
+          <!-- Calendar will be generated here -->
+        </div>
+      </div>
+
+      <!-- Tools View -->
+      <div class="view" id="toolsView">
+        <header class="content-header">
+          <h1>Analysis Tools</h1>
+          <p class="header-subtitle">Advanced analysis and processing tools for astronomical data</p>
+        </header>
+
+        <div class="tools-grid">
+          <!-- H-R Diagram Tool -->
+          <div class="tool-card">
+            <div class="tool-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+              </svg>
+            </div>
+            <div class="tool-content">
+              <h3>H-R Diagram Generator</h3>
+              <p>Create Hertzsprung-Russell diagrams from stellar field images. Automatically detect stars, perform photometry, and plot stellar evolution relationships.</p>
+              <div class="tool-features">
+                <span class="feature-tag">Star Detection</span>
+                <span class="feature-tag">Photometry</span>
+                <span class="feature-tag">Color Analysis</span>
+                <span class="feature-tag">Data Export</span>
+              </div>
+              <button class="btn-primary tool-launch-btn" id="hrDiagramBtn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M5 12l5 5l10-10"/>
+                </svg>
+                Launch Tool
+              </button>
+            </div>
+          </div>
+
+          <!-- Placeholder for future tools -->
+          <div class="tool-card placeholder">
+            <div class="tool-icon placeholder-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+            </div>
+            <div class="tool-content">
+              <h3>More Tools Coming Soon</h3>
+              <p>Additional analysis tools will be added here, including spectral analysis, astrometry, and photometric calibration.</p>
+              <div class="tool-features">
+                <span class="feature-tag upcoming">Spectral Analysis</span>
+                <span class="feature-tag upcoming">Astrometry</span>
+                <span class="feature-tag upcoming">Calibration</span>
+              </div>
+              <button class="btn-secondary" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12,6 12,12 16,14"/>
+                </svg>
+                Coming Soon
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool Categories -->
+        <div class="tool-categories">
+          <h2>Tool Categories</h2>
+          <div class="category-grid">
+            <div class="category-card">
+              <div class="category-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                  <polyline points="3.27,6.96 12,12.01 20.73,6.96"/>
+                  <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+              </div>
+              <h3>Stellar Analysis</h3>
+              <p>Tools for analyzing individual stars and stellar populations</p>
+              <ul>
+                <li>H-R Diagram Generation</li>
+                <li>Color-Magnitude Diagrams</li>
+                <li>Variable Star Analysis</li>
+                <li>Binary Star Detection</li>
+              </ul>
+            </div>
+
+            <div class="category-card upcoming">
+              <div class="category-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+              </div>
+              <h3>Deep Sky Objects</h3>
+              <p>Analysis tools for nebulae, galaxies, and clusters</p>
+              <ul>
+                <li>Surface Brightness Profiles</li>
+                <li>Galaxy Classification</li>
+                <li>Nebula Emission Analysis</li>
+                <li>Cluster Photometry</li>
+              </ul>
+            </div>
+
+            <div class="category-card upcoming">
+              <div class="category-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                  <path d="M3 3v5h5"/>
+                </svg>
+              </div>
+              <h3>Astrometry & Calibration</h3>
+              <p>Precision measurement and calibration tools</p>
+              <ul>
+                <li>Plate Solving</li>
+                <li>Coordinate Systems</li>
+                <li>Photometric Calibration</li>
+                <li>Distortion Correction</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cleanup View -->
+      <div class="view" id="cleanupView">
+        <header class="content-header">
+          <h1>Cleanup</h1>
+          <button class="btn-danger" id="deleteSelectedBtn" disabled>
+            Delete Selected
+          </button>
+        </header>
+
+        <div id="cleanupList" class="cleanup-list">
+          <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M3 6h18M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2m3 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6h14z"/>
+            </svg>
+            <p>No cleanup folders found or configured.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Verbose Log Modal -->
+  <div id="verboseLogModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Scan Analysis Report</h2>
+        <div class="modal-actions">
+          <button class="btn-primary" id="copyLogBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy Report
+          </button>
+          <button class="btn-secondary" id="closeLogBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+            Close
+          </button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div id="verboseLogContent" class="log-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core foundational modules -->
+  <script src="js/modules/settings-manager.js"></script>
+  <script src="js/modules/ui-utils.js"></script>
+  <script src="js/modules/data-utils.js"></script>
+  <script src="js/modules/log-manager.js"></script>
+  <script src="js/modules/file-scanner.js"></script>
+  <script src="js/modules/project-manager.js"></script>
+  <script src="js/modules/background-scanner.js"></script>
+  <script src="js/modules/calendar-module.js"></script>
+  <script src="js/modules/cleanup-manager.js"></script>
+  <script src="js/modules/acquisition-charts.js"></script>
+  <script src="js/modules/project-ui.js"></script>
+
+  <!-- Feature modules -->
+  <script src="js/modules/hr-diagram.js"></script>
+  <script src="js/modules/hr-diagram-ui.js"></script>
+  <script src="js/target-validator.js"></script>
+
+  <!-- Main application (loads after modules) -->
+  <script src="js/app.js"></script>
+</body>
+</html>
