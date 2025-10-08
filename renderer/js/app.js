@@ -369,6 +369,8 @@ function switchView(view) {
     renderCleanup();
   } else if (view === 'tools') {
     initializeToolsView();
+  } else if (view === 'social') {
+    initializeSocialView();
   }
   
   console.log(`Switched to view: ${viewId}`);
@@ -736,5 +738,27 @@ function initializeToolsView() {
       switchView('tools');
     });
     console.log('Back to Tools button listener added');
+  }
+}
+
+// Initialize Social View
+function initializeSocialView() {
+  console.log('Initializing Social view');
+  
+  try {
+    if (typeof ensureSocialManager !== 'function') {
+      console.error('Social module not loaded: ensureSocialManager is undefined. Check that social-manager.js is included and parsed without errors.');
+      return;
+    }
+
+    const socialManager = ensureSocialManager();
+    if (socialManager) {
+      socialManager.show();
+      console.log('Social manager initialized and shown');
+    } else {
+      console.error('Failed to initialize social manager');
+    }
+  } catch (error) {
+    console.error('Error initializing social view:', error);
   }
 }
