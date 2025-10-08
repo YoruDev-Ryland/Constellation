@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Constellation</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/modules/sub-analyzer.css">
   <link rel="stylesheet" href="css/modules/image-viewer.css">
@@ -21,7 +22,7 @@
         <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" fill="none" stroke="currentColor"/></svg>
       </button>
       <button class="titlebar-btn close" id="closeBtn">
-        <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor"/></svg>
+        <i class="fas fa-times"></i>
       </button>
     </div>
   </div>
@@ -39,18 +40,11 @@
           Dashboard
         </a>
         <a href="#" class="nav-item" data-view="projects">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
-          </svg>
+          <i class="fas fa-folder"></i>
           Projects
         </a>
         <a href="#" class="nav-item" data-view="calendar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <rect x="3" y="4" width="18" height="18" rx="2"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-            <line x1="9" y1="4" x2="9" y2="2"/>
-            <line x1="15" y1="4" x2="15" y2="2"/>
-          </svg>
+          <i class="fas fa-calendar"></i>
           Calendar
         </a>
         <a href="#" class="nav-item" data-view="tools">
@@ -74,10 +68,7 @@
           </svg>
         </button>
         <button class="btn-icon" id="settingsBtn" title="Settings">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24"/>
-          </svg>
+          <i class="fas fa-cog"></i>
         </button>
       </div>
     </aside>
@@ -99,9 +90,7 @@
               Verbose Off
             </button>
             <button class="btn-primary" id="scanBtn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
+              <i class="fas fa-search"></i>
               Scan Library
             </button>
           </div>
@@ -242,11 +231,7 @@
             <div class="overview-stats">
               <div class="stat-card">
                 <div class="stat-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                    <circle cx="9" cy="9" r="2"/>
-                    <path d="M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                  </svg>
+                  <i class="fas fa-images"></i>
                 </div>
                 <div class="stat-content">
                   <div class="stat-value" id="projectImageCount">0</div>
@@ -256,10 +241,7 @@
               
               <div class="stat-card">
                 <div class="stat-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 6v6l4 2"/>
-                  </svg>
+                  <i class="fas fa-clock"></i>
                 </div>
                 <div class="stat-content">
                   <div class="stat-value" id="projectTotalTime">0h</div>
@@ -269,10 +251,7 @@
               
               <div class="stat-card">
                 <div class="stat-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V6a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                  </svg>
+                  <i class="fas fa-filter"></i>
                 </div>
                 <div class="stat-content">
                   <div class="stat-value" id="projectFilterCount">0</div>
@@ -282,12 +261,7 @@
               
               <div class="stat-card">
                 <div class="stat-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <rect x="3" y="4" width="18" height="18" rx="2"/>
-                    <line x1="3" y1="10" x2="21" y2="10"/>
-                    <line x1="9" y1="4" x2="9" y2="2"/>
-                    <line x1="15" y1="4" x2="15" y2="2"/>
-                  </svg>
+                  <i class="fas fa-calendar-plus"></i>
                 </div>
                 <div class="stat-content">
                   <div class="stat-value" id="projectCreatedDate">-</div>
