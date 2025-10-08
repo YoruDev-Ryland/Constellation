@@ -344,8 +344,7 @@ function setupEventListeners() {
   document.getElementById('copyLogBtn')?.addEventListener('click', copyVerboseLogToClipboard);
   document.getElementById('verboseLogModal')?.addEventListener('click', e => { if (e.target.id === 'verboseLogModal') closeVerboseLogModal(); });
 
-  // Cleanup deletion
-  document.getElementById('deleteSelectedBtn')?.addEventListener('click', () => ensureCleanupManager().deleteSelected());
+  // Cleanup deletion is wired by the CleanupManager module to avoid duplicate handlers
 }
 
 // Switch view
