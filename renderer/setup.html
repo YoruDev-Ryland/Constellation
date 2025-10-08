@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Constellation - Setup</title>
   <link rel="stylesheet" href="css/styles.css">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self';">
 </head>
 <body class="setup-page">
   <div class="setup-container">
@@ -29,6 +30,7 @@
     </div>
 
     <div class="setup-content">
+      <!-- Step 1: Storage Path -->
       <div class="setup-step" id="step1">
         <h2>Storage Location</h2>
         <p>Choose the primary directory where your astrophotography images are stored</p>
@@ -47,6 +49,7 @@
         </div>
       </div>
 
+      <!-- Step 2: Cleanup Folders -->
       <div class="setup-step" id="step2">
         <h2>Cleanup Folders</h2>
         <p>Folder names that contain temporary processing files safe for deletion</p>
@@ -62,6 +65,7 @@
         <div class="cleanup-tags" id="cleanupTags"></div>
       </div>
 
+      <!-- Step 3: Ignore Folders -->
       <div class="setup-step" id="step3">
         <h2>Ignore Folders</h2>
         <p>Software and system folders to exclude from scans</p>
@@ -77,6 +81,7 @@
         <div class="ignore-tags" id="ignoreTags"></div>
       </div>
 
+      <!-- Step 4: Background Scanning -->
       <div class="setup-step" id="step4">
         <h2>Background Scanning</h2>
         <p>Automatically scan for new images and projects in the background</p>
@@ -98,6 +103,7 @@
         </div>
       </div>
 
+      <!-- Step 5: Premium License -->
       <div class="setup-step" id="step5">
         <h2>Premium License</h2>
         <p>Unlock advanced features with a premium license key</p>
@@ -128,80 +134,6 @@
             <path d="M20 6L9 17L4 12"/>
           </svg>
           Save Settings
-        </button>
-      </div>
-    </div>
-          <!-- Tags will be added here -->
-        </div>
-        
-        </div>
-    </div>
-  </div>
-
-  <script src="js/setup.js"></script>
-</body>
-</html>
-
-      <div class="setup-step" id="step4">
-        <h2>Premium License</h2>
-        <p>Activate your premium license to unlock advanced features</p>
-        
-        <div class="license-section">
-          <div class="input-group">
-            <input type="text" id="licenseKeyInput" placeholder="CONST-XXXXX-XXXXX-XXXXX-XXXXX" maxlength="29">
-            <button class="btn-primary" id="activateLicenseBtn">Activate</button>
-          </div>
-          
-          <div class="license-status" id="licenseStatus">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <span>Enter your license key to activate premium features</span>
-          </div>
-          
-          <div class="license-actions" id="licenseActions" style="display: none;">
-            <button class="btn-secondary btn-small" id="deactivateLicenseBtn">Deactivate License</button>
-          </div>
-        </div>
-        
-        <p class="hint">Skip this step to use the free version with basic features</p>
-      </div>
-
-      <div class="setup-step" id="step5">
-        <h2>Background Scanning</h2>
-        <p>Keep your library up-to-date with automatic background scanning</p>
-        
-        <div class="setting-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="enableBackgroundScan" checked>
-            <span class="checkmark"></span>
-            Enable background scanning
-          </label>
-          <p class="setting-description">Silently scan for new images while you work</p>
-        </div>
-        
-        <div class="setting-group" id="backgroundFrequencyGroup">
-          <label for="backgroundScanHours">Scan frequency:</label>
-          <select id="backgroundScanHours">
-            <option value="1">Every hour</option>
-            <option value="2">Every 2 hours</option>
-            <option value="4" selected>Every 4 hours</option>
-            <option value="8">Every 8 hours</option>
-            <option value="24">Once daily</option>
-          </select>
-        </div>
-        
-        <p class="hint">Background scans are optimized to avoid performance impact</p>
-      </div>
-
-      <div class="setup-actions">
-        <button class="btn-large btn-primary" id="completeSetupBtn" disabled>
-          Complete Setup
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M5 12H19M19 12L12 5M19 12L12 19"/>
-          </svg>
         </button>
       </div>
     </div>

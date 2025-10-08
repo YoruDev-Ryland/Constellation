@@ -420,4 +420,20 @@ ignoreFolders = [
   }
 })();
 
+  // Auto-initialize when this script is loaded on the standalone setup page
+  if (document.body && document.body.classList.contains('setup-page')) {
+    // Wait for DOM ready to ensure elements are present
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (typeof window.setupModalInit === 'function') {
+          window.setupModalInit();
+        }
+      });
+    } else {
+      if (typeof window.setupModalInit === 'function') {
+        window.setupModalInit();
+      }
+    }
+  }
+
 } // End setup module guard
