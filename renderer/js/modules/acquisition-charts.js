@@ -95,6 +95,9 @@ class AcquisitionCharts {
     try {
       const settings = this.getSettings();
       const result = await this.electronAPI.scanProjectFiles(project.name, settings.storagePath);
+      if (result && result.debug && result.debug.scannedFolders) {
+        console.debug('[AcquisitionCharts] scanProjectFiles debug:', result.debug);
+      }
       if (result.success && Array.isArray(result.sessions)) {
         const mapped = result.sessions.map(session => ({
           date: session.date,

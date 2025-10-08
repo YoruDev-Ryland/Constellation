@@ -307,16 +307,18 @@ ipcMain.handle('scan-project-files', async (event, projectName, storagePath) => 
     }
 
     const fileData = [];
+    const debugFolders = [];
     for (const projectFolder of projectFolders) {
       const files = await scanProjectFolder(projectFolder);
       fileData.push(...files);
+      debugFolders.push({ folder: projectFolder, filesFound: files.length });
     }
 
     const sessions = groupFilesBySession(fileData);
     if (sessions.length === 0) {
-      return { success: true, sessions: [], debug: { reason: 'no-sessions-derived', examined: fileData.length, sample: fileData.slice(0,5).map(f=>({filename:f.filename, dateObs:f.dateObs, filter:f.filter, exposure:f.exposure})), missingDateObs: fileData.filter(f=>!f.dateObs).length } };
+      return { success: true, sessions: [], debug: { reason: 'no-sessions-derived', examined: fileData.length, scannedFolders: debugFolders, sample: fileData.slice(0,5).map(f=>({filename:f.filename, dateObs:f.dateObs, filter:f.filter, exposure:f.exposure})), missingDateObs: fileData.filter(f=>!f.dateObs).length } };
     }
-    return { success: true, sessions };
+    return { success: true, sessions, debug: { scannedFolders: debugFolders } };
   } catch (error) {
     console.error('Error scanning project files:', error);
     return { success: false, error: error.message };
@@ -466,25 +468,43 @@ ipcMain.handle('get-calendar-images', async (event, storagePath, forceRefresh = 
 // Helper functions
 async function findProjectFolders(storagePath, projectName) {
   const folders = [];
-  
+  const seen = new Set();
+
+  // Normalizer: strip non-alphanumeric and lowercase
+  const normalize = s => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const searchNameNorm = normalize(projectName || '');
+  if (!searchNameNorm) return [];
+
   async function searchDirectory(dirPath, depth = 0) {
     if (depth > 3) return; // Limit search depth
-    
+
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
-      
+
       for (const entry of entries) {
         if (entry.isDirectory()) {
           const fullPath = path.join(dirPath, entry.name);
-          
-          // Check if directory name matches project name (exact match, case insensitive)
-          const folderName = entry.name.toLowerCase().trim();
-          const searchName = projectName.toLowerCase().trim();
-          
-          if (folderName === searchName) {
-            folders.push(fullPath);
+          const folderNameNorm = normalize(entry.name);
+
+          if (folderNameNorm) {
+            // Require a minimum length to avoid accidental single-character matches
+            const minLen = 3;
+            const matches = (
+              folderNameNorm === searchNameNorm ||
+              (searchNameNorm.length >= minLen && folderNameNorm.includes(searchNameNorm)) ||
+              (folderNameNorm.length >= minLen && searchNameNorm.includes(folderNameNorm))
+            );
+
+            if (matches) {
+              if (!seen.has(fullPath)) {
+                seen.add(fullPath);
+                folders.push(fullPath);
+              }
+              // Do not recurse into matched folder to avoid scanning the same files multiple times
+              continue;
+            }
           }
-          
+
           // Continue searching subdirectories
           await searchDirectory(fullPath, depth + 1);
         }
@@ -493,7 +513,7 @@ async function findProjectFolders(storagePath, projectName) {
       // Ignore permission errors and continue
     }
   }
-  
+
   await searchDirectory(storagePath);
   return folders;
 }
