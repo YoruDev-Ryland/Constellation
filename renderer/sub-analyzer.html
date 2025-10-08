@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sub-Frame Quality Analyzer - Constellation</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/sub-analyzer.css">
+</head>
+<body>
+    <div class="container" id="sub-analyzer-module">
+        <!-- Header -->
+        <header class="module-header">
+            <div class="header-content">
+                <h1>🔍 Sub-Frame Quality Analyzer</h1>
+                <p>Automatically identify good and bad sub-frames against a reference image</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn secondary" onclick="history.back()">← Back</button>
+            </div>
+        </header>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div id="status-message" class="status"></div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="analyzer-main">
+            
+            <!-- Step 1: Reference Frame Selection -->
+            <section class="analyzer-section">
+                <div class="section-header">
+                    <h2>📸 Step 1: Select Reference Frame</h2>
+                    <p>Choose a high-quality FITS frame to use as your baseline for comparison</p>
+                </div>
+                
+                <div class="reference-frame-setup">
+                    <div class="setup-controls">
+                        <button id="select-reference-btn" class="btn primary large">
+                            📁 Select Reference FITS File
+                        </button>
+                    </div>
+                    
+                    <div id="reference-frame-info" class="reference-info">
+                        <div class="empty-state">
+                            <p>No reference frame selected</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Quality Thresholds -->
+            <section class="analyzer-section">
+                <div class="section-header">
+                    <h2>⚙️ Step 2: Quality Thresholds</h2>
+                    <p>Adjust the criteria for determining good vs bad sub-frames</p>
+                </div>
+                
+                <div class="thresholds-grid">
+                    <div class="threshold-group">
+                        <label>FWHM (Full Width Half Maximum)</label>
+                        <div class="threshold-inputs">
+                            <div class="input-group">
+                                <label>Min:</label>
+                                <input type="number" class="threshold-input" 
+                                       data-metric="fwhm" data-type="min" 
+                                       value="0.5" step="0.1" min="0.1" max="10">
+                                <span>px</span>
+                            </div>
+                            <div class="input-group">
+                                <label>Max:</label>
+                                <input type="number" class="threshold-input" 
+                                       data-metric="fwhm" data-type="max" 
+                                       value="5.0" step="0.1" min="0.5" max="15">
+                                <span>px</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="threshold-group">
+                        <label>Star Count</label>
+                        <div class="threshold-inputs">
+                            <div class="input-group">
+                                <label>Min:</label>
+                                <input type="number" class="threshold-input" 
+                                       data-metric="stars" data-type="min" 
+                                       value="50" step="10" min="10" max="5000">
+                                <span>stars</span>
+                            </div>
+                            <div class="input-group">
+                                <label>Max:</label>
+                                <input type="number" class="threshold-input" 
+                                       data-metric="stars" data-type="max" 
+                                       value="10000" step="100" min="100" max="50000">
+                                <span>stars</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="threshold-group">
+                        <label>Background Noise</label>
+                        <div class="threshold-inputs">
+                            <div class="input-group">
+                                <label>Max:</label>
+                                <input type="number" class="threshold-input" 
+                                       data-metric="noise" data-type="max" 
+                                       value="0.1" step="0.01" min="0.01" max="0.5">
+                                <span>%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="threshold-group">
+                        <label>Tracking Error</label>
+                        <div class="threshold-inputs">
+                            <div class="input-group">
+                                <label>Max:</label>
+                                <input type="number" class="threshold-input" 
+                                       data-metric="tracking" data-type="max" 
+                                       value="3.0" step="0.1" min="0.1" max="20">
+                                <span>px</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="threshold-group">
+                        <label>Saturation Level</label>
+                        <div class="threshold-inputs">
+                            <div class="input-group">
+                                <label>Max:</label>
+                                <input type="number" class="threshold-input" 
+                                       data-metric="saturation" data-type="max" 
+                                       value="0.05" step="0.01" min="0.01" max="0.3">
+                                <span>%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="threshold-group">
+                        <label>Image Contrast</label>
+                        <div class="threshold-inputs">
+                            <div class="input-group">
+                                <label>Min:</label>
+                                <input type="number" class="threshold-input" 
+                                       data-metric="contrast" data-type="min" 
+                                       value="0.1" step="0.01" min="0.01" max="1.0">
+                                <span>ratio</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 3: Batch Analysis -->
+            <section class="analyzer-section">
+                <div class="section-header">
+                    <h2>🔄 Step 3: Batch Analysis</h2>
+                    <p>Select a folder containing your sub-frames and start the analysis</p>
+                </div>
+                
+                <div class="batch-analysis-setup">
+                    <div class="folder-selection">
+                        <button id="select-folder-btn" class="btn secondary large">
+                            📂 Select FITS Folder
+                        </button>
+                        <div class="folder-info">
+                            <p id="analysis-folder-path">No folder selected</p>
+                            <p id="file-count" class="file-count">0 FITS files found</p>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-controls">
+                        <button id="start-analysis-btn" class="btn success large" disabled>
+                            ▶️ Start Analysis
+                        </button>
+                        <button id="stop-analysis-btn" class="btn danger" disabled>
+                            ⏹️ Stop Analysis
+                        </button>
+                    </div>
+                    
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="analysis-progress" class="progress-fill"></div>
+                        </div>
+                        <div id="progress-text" class="progress-text">Ready to start</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Results -->
+            <section class="analyzer-section">
+                <div class="section-header">
+                    <h2>📊 Analysis Results</h2>
+                    <p>Review the quality analysis and manage your sub-frames</p>
+                </div>
+                
+                <div class="results-actions">
+                    <button id="export-results-btn" class="btn primary" disabled>
+                        💾 Export Results CSV
+                    </button>
+                    <button id="organize-files-btn" class="btn secondary" disabled>
+                        📁 Organize Files by Quality
+                    </button>
+                </div>
+                
+                <div id="analysis-results" class="results-container">
+                    <div class="empty-state">
+                        <p>No analysis results yet. Complete the steps above to analyze your sub-frames.</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Info Panel -->
+        <aside class="info-panel">
+            <div class="info-card">
+                <h3>💡 How It Works</h3>
+                <ul>
+                    <li><strong>Reference Frame:</strong> Select your best sub-frame as a quality baseline</li>
+                    <li><strong>Quality Metrics:</strong> Analyzes FWHM, star count, noise, tracking, and more</li>
+                    <li><strong>Batch Processing:</strong> Analyzes hundreds or thousands of sub-frames automatically</li>
+                    <li><strong>Smart Classification:</strong> Categorizes frames as Good, Acceptable, or Bad</li>
+                    <li><strong>File Organization:</strong> Automatically sorts files into quality-based folders</li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>🎯 Quality Criteria</h3>
+                <div class="criteria-list">
+                    <div class="criterion">
+                        <span class="criterion-name">FWHM:</span>
+                        <span class="criterion-desc">Star sharpness (lower = better)</span>
+                    </div>
+                    <div class="criterion">
+                        <span class="criterion-name">Star Count:</span>
+                        <span class="criterion-desc">Number of detected stars</span>
+                    </div>
+                    <div class="criterion">
+                        <span class="criterion-name">Noise:</span>
+                        <span class="criterion-desc">Background noise level</span>
+                    </div>
+                    <div class="criterion">
+                        <span class="criterion-name">Tracking:</span>
+                        <span class="criterion-desc">Mount tracking accuracy</span>
+                    </div>
+                    <div class="criterion">
+                        <span class="criterion-name">Saturation:</span>
+                        <span class="criterion-desc">Percentage of saturated pixels</span>
+                    </div>
+                    <div class="criterion">
+                        <span class="criterion-name">Contrast:</span>
+                        <span class="criterion-desc">Overall image contrast</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h3>⚡ Pro Tips</h3>
+                <ul>
+                    <li>Choose a reference frame with excellent seeing conditions</li>
+                    <li>Adjust thresholds based on your equipment and conditions</li>
+                    <li>Use "Acceptable" frames for light pollution or narrowband</li>
+                    <li>Export results to track improvements over time</li>
+                    <li>Organize files to speed up your stacking workflow</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <script src="js/sub-analyzer.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+.image-viewer-modal { 
+  position: fixed; 
+  /* keep viewer below the top titlebar (32px) so it doesn't overlap window controls */
+  top: 32px; 
+  left: 0; right: 0; bottom: 0;
+  display: none; 
+  z-index: 1200; 
+  background: rgba(10, 14, 23, 0.95);
+  backdrop-filter: blur(8px);
+}
+
+.image-viewer-modal.visible { display: flex; }
+
+.image-viewer-modal .iv-content { 
+  position: relative; 
+  width: 100%; 
+  height: 100%; 
+  display: flex; 
+  flex-direction: column;
+}
+
+.image-viewer-modal .iv-close { 
+  position: absolute; 
+  right: 24px; 
+  top: 24px; 
+  background: rgba(30, 41, 59, 0.8); 
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0; 
+  font-size: 18px; 
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer; 
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.image-viewer-modal .iv-close:hover {
+  background: rgba(30, 41, 59, 1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.image-viewer-modal .iv-toolbar { 
+  position: absolute; 
+  left: 24px; 
+  top: 24px; 
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+}
+
+.image-viewer-modal .iv-btn { 
+  padding: 8px 12px; 
+  background: rgba(30, 41, 59, 0.8); 
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-viewer-modal .iv-btn:hover {
+  background: rgba(30, 41, 59, 1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.image-viewer-modal .iv-stage { 
+  flex: 1; 
+  display: block; 
+  overflow: hidden; 
+  position: relative;
+  cursor: grab;
+}
+
+.image-viewer-modal .iv-stage.grabbing { cursor: grabbing; }
+
+.image-viewer-modal .iv-stage .iv-image { 
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform; 
+  transform-origin: 0 0; 
+  user-select: none; 
+  pointer-events: none; 
+  max-width: none; 
+  max-height: none;
+  border-radius: 4px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}

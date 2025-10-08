@@ -2,6 +2,7 @@
 // Settings now managed through SettingsManager instance for observer capability
 let settings = {}; // Will be replaced after SettingsManager load (kept for backward compatibility during incremental refactor)
 let settingsManager = null;
+let licenseManager = null;
 let projects = [];
 let targets = [];
 let cleanupFolders = [];
@@ -89,6 +90,80 @@ function ensureCleanupManager() {
   return cleanupManager;
 }
 
+function ensureLicenseManager() {
+  if (!licenseManager) {
+    licenseManager = new LicenseManager(window.electronAPI, {
+      log: (msg, data) => { const mgr = ensureLogManager(); if (mgr.isVerbose()) mgr.log(msg, data); }
+    });
+  }
+  return licenseManager;
+}
+
+// ---------- Settings Modal ----------
+async function showSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  const content = document.getElementById('settingsContent');
+  
+  if (!modal || !content) return;
+  
+  // Load the setup content
+  try {
+    const response = await fetch('setup.html');
+    const html = await response.text();
+    
+    // Extract just the setup content (between setup-container divs)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const setupContainer = doc.querySelector('.setup-container');
+    
+    if (setupContainer) {
+      content.innerHTML = setupContainer.innerHTML;
+      
+      // Load and execute the setup script (only once)
+      if (typeof window.setupModuleLoaded === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'js/setup.js';
+        script.onload = () => {
+          if (typeof setupModalInit === 'function') setupModalInit();
+        };
+        document.head.appendChild(script);
+      } else {
+        // Script already loaded, just initialize
+        if (typeof setupModalInit === 'function') setupModalInit();
+      }
+    }
+    
+    // Show the modal
+    modal.style.display = 'flex';
+    
+    // Add close button handler
+    const closeBtn = document.getElementById('closeSettingsBtn');
+    if (closeBtn) {
+      closeBtn.onclick = hideSettingsModal;
+    }
+    
+    // Close on backdrop click
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        hideSettingsModal();
+      }
+    };
+    
+  } catch (error) {
+    console.error('Failed to load settings content:', error);
+  }
+}
+
+function hideSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+// Make hideSettingsModal globally accessible
+window.hideSettingsModal = hideSettingsModal;
+
 // ---------- Verbose Log Helpers ----------
 function showVerboseLogModal() { const mgr = ensureLogManager(); if (mgr) mgr.showModal(targets); }
 function closeVerboseLogModal() { const mgr = ensureLogManager(); if (mgr) mgr.closeModal(); }
@@ -158,8 +233,14 @@ async function scanLibrary() {
 async function init() {
   ensureLogManager();
   try { settings = await window.electronAPI.getSettings(); } catch (e) { console.error('Failed to load settings:', e); }
+  
+  // Initialize license manager
+  const license = ensureLicenseManager();
+  await license.initialize();
+  
   try {
     const db = await window.electronAPI.getLibraryDatabase?.();
+    console.log('Loaded database:', db ? 'found' : 'not found', db?.targets?.length || 0, 'targets');
     if (db && db.targets) {
       targets = db.targets || [];
       const currentPath = settings.storagePath;
@@ -181,6 +262,7 @@ async function init() {
         }
       } catch (e) { console.warn('Startup thumbnail auto-detect (DB path) failed:', e); }
     } else {
+      console.log('No database found, loading from fallback methods');
       projects = await window.electronAPI.getProjects();
       ensureProjectManager().setProjects(projects);
       await ensureProjectManager().autoDetectMissingThumbnails(settings.storagePath);
@@ -192,6 +274,7 @@ async function init() {
     await ensureProjectManager().autoDetectMissingThumbnails(settings.storagePath);
   }
   setupEventListeners();
+  console.log('Rendering dashboard with', targets.length, 'targets');
   renderDashboard();
   renderProjects();
   window.ensureCalendarModule().render();
@@ -213,7 +296,13 @@ function setupEventListeners() {
   // Scan / refresh / settings
   document.getElementById('scanBtn')?.addEventListener('click', scanLibrary);
   document.getElementById('refreshBtn')?.addEventListener('click', scanLibrary);
-  document.getElementById('settingsBtn')?.addEventListener('click', () => window.electronAPI.openSettings());
+  document.getElementById('settingsBtn')?.addEventListener('click', showSettingsModal);
+
+  // Settings modal
+  document.getElementById('closeSettingsBtn')?.addEventListener('click', hideSettingsModal);
+  
+  // Listen for settings modal events from main process
+  window.electronAPI.onShowSettings?.(() => showSettingsModal());
 
   // Verbose toggle
   document.getElementById('verboseToggleBtn')?.addEventListener('click', () => {
@@ -520,6 +609,51 @@ function updateBackgroundScanSettings(enabled, frequencyHours) {
   })();
 }
 
+// Sub-Frame Analyzer Integration
+async function openSubFrameAnalyzer() {
+  console.log('Opening Sub-Frame Analyzer');
+  
+  try {
+    // Load the HTML module content if not already loaded
+    const subAnalyzerView = document.getElementById('subAnalyzerView');
+    if (subAnalyzerView && subAnalyzerView.innerHTML.trim() === '<!-- Content will be loaded from modules/sub-analyzer-view.html -->') {
+      console.log('Loading Sub-Frame Analyzer module content...');
+      
+      try {
+        const response = await fetch('js/modules/sub-analyzer-view.html');
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const htmlContent = await response.text();
+        subAnalyzerView.innerHTML = htmlContent;
+        console.log('Sub-Frame Analyzer HTML module loaded successfully');
+      } catch (error) {
+        console.error('Failed to load Sub-Frame Analyzer module:', error);
+        throw new Error('Failed to load Sub-Frame Analyzer module: ' + error.message);
+      }
+    }
+    
+    // Show the sub-analyzer view
+    switchView('subAnalyzer');
+    
+    // Initialize the analyzer if not already done
+    if (!window.subFrameAnalyzer) {
+      // Give the DOM a moment to update before initializing
+      setTimeout(() => {
+        if (typeof initSubFrameAnalyzer === 'function') {
+          window.subFrameAnalyzer = initSubFrameAnalyzer();
+          console.log('Sub-Frame Analyzer initialized successfully');
+        } else {
+          console.error('initSubFrameAnalyzer function not found');
+        }
+      }, 100);
+    }
+    
+    console.log('Sub-Frame Analyzer view opened successfully');
+  } catch (error) {
+    console.error('Error opening Sub-Frame Analyzer:', error);
+    alert('Error opening Sub-Frame Analyzer: ' + error.message);
+  }
+}
+
 // H-R Diagram Integration
 function createHRDiagram() {
   console.log('Creating H-R Diagram interface');
@@ -574,5 +708,34 @@ function initializeToolsView() {
     console.log('H-R Diagram button listener added');
   } else {
     console.warn('H-R Diagram button not found in DOM');
+  }
+
+  // Add event listener for Sub-Frame Analyzer button if it exists
+  const subAnalyzerButton = document.getElementById('subAnalyzerBtn');
+  if (subAnalyzerButton) {
+    // Remove any existing listeners
+    subAnalyzerButton.replaceWith(subAnalyzerButton.cloneNode(true));
+    const newSubAnalyzerButton = document.getElementById('subAnalyzerBtn');
+    
+    newSubAnalyzerButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Sub-Frame Analyzer button clicked');
+      openSubFrameAnalyzer();
+    });
+    
+    console.log('Sub-Frame Analyzer button listener added');
+  } else {
+    console.warn('Sub-Frame Analyzer button not found in DOM');
+  }
+
+  // Add back to tools button handler
+  const backToToolsBtn = document.getElementById('backToToolsBtn');
+  if (backToToolsBtn) {
+    backToToolsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Back to Tools button clicked');
+      switchView('tools');
+    });
+    console.log('Back to Tools button listener added');
   }
 }

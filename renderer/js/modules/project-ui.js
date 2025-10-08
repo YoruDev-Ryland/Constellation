@@ -7,7 +7,7 @@ if (!window.__CONSTELLATION.thumbCache) {
   window.__CONSTELLATION.thumbCache = {
     data: new Map(),            // originalPath -> dataURL (resized)
     inflight: new Map(),        // originalPath -> Promise
-    stats: { hits:0, misses:0, processed:0 },
+    stats: { hits: 0, misses: 0, processed: 0 },
     maxEntries: 500,
     prune() {
       const { data, maxEntries } = this;
@@ -27,9 +27,9 @@ class ProjectUI {
   constructor(options = {}) {
     this.getProjects = options.getProjects || (() => []);
     this.getCurrentProject = options.getCurrentProject || (() => null);
-    this.setCurrentProject = options.setCurrentProject || (() => {});
-    this.saveProjects = options.saveProjects || (async () => {});
-    this.findThumbnail = options.findThumbnail || (async () => ({ success:false }));
+    this.setCurrentProject = options.setCurrentProject || (() => { });
+    this.saveProjects = options.saveProjects || (async () => { });
+    this.findThumbnail = options.findThumbnail || (async () => ({ success: false }));
 
     // Configurable thumbnail processing settings
     this.thumbMaxSize = 480;      // max width/height for project grid
@@ -51,12 +51,12 @@ class ProjectUI {
     while (this.activeDecodes < this.concurrentDecode && this.decodeQueue.length) {
       const task = this.decodeQueue.shift();
       this.activeDecodes++;
-      
+
       // Use requestIdleCallback like calendar for better performance
       const executeTask = () => {
-        task().finally(() => { 
-          this.activeDecodes--; 
-          this._drainDecodeQueue(); 
+        task().finally(() => {
+          this.activeDecodes--;
+          this._drainDecodeQueue();
         });
       };
 
@@ -76,14 +76,14 @@ class ProjectUI {
     if (cache.inflight.has(srcPath)) return cache.inflight.get(srcPath);
 
     cache.stats.misses++;
-    
+
     const promise = new Promise((resolve) => {
       const loadImage = () => {
         return new Promise((imageResolve, imageReject) => {
           const img = new Image();
-          
+
           img.onload = async () => {
-            try {              
+            try {
               // Create thumbnail like calendar does
               const thumbnailUrl = await this._createThumbnail(srcPath, img);
               cache.data.set(srcPath, thumbnailUrl);
@@ -97,12 +97,12 @@ class ProjectUI {
               imageResolve(fallbackUrl);
             }
           };
-          
+
           img.onerror = (e) => {
             console.warn('[ProjectUI] Image load failed for:', srcPath);
             imageReject(e);
           };
-          
+
           img.src = `file://${srcPath}`;
         });
       };
@@ -138,11 +138,11 @@ class ProjectUI {
       try {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        
+
         // Calculate dimensions maintaining aspect ratio
         const { width: originalWidth, height: originalHeight } = originalImage;
         const maxSize = this.thumbMaxSize;
-        
+
         let { width, height } = originalImage;
         if (width > height) {
           if (width > maxSize) {
@@ -155,25 +155,25 @@ class ProjectUI {
             height = maxSize;
           }
         }
-        
+
         canvas.width = width;
         canvas.height = height;
-        
+
         // Enable image smoothing for better quality
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        
+
         // Draw the resized image
         ctx.drawImage(originalImage, 0, 0, width, height);
-        
+
         // Convert to data URL for CSS usage
         const thumbnailDataUrl = canvas.toDataURL('image/jpeg', this.thumbQuality);
         const cssUrl = `url('${thumbnailDataUrl}')`;
-        
+
         // Clean up canvas
         canvas.width = 0;
         canvas.height = 0;
-        
+
         resolve(cssUrl);
       } catch (error) {
         console.warn('[ProjectUI] Failed to create thumbnail:', error);
@@ -186,15 +186,15 @@ class ProjectUI {
 
   async _applyThumb(thumbEl, originalPath) {
     if (!originalPath || !thumbEl) return;
-    
+
     const cached = await this._ensureResized(originalPath);
-    if (!cached) { 
-      thumbEl.classList.add('thumb-error'); 
-      return; 
+    if (!cached) {
+      thumbEl.classList.add('thumb-error');
+      return;
     }
     // If element was removed or reused, guard
     if (!document.body.contains(thumbEl)) return;
-    
+
     requestAnimationFrame(() => {
       // Use background-image approach like calendar for reliability
       thumbEl.style.cssText += `
@@ -245,7 +245,7 @@ class ProjectUI {
 
     const filtersList = document.getElementById('projectFiltersList');
     if (filtersList) {
-      filtersList.innerHTML = Object.entries(project.filters).map(([filter,data]) => `
+      filtersList.innerHTML = Object.entries(project.filters).map(([filter, data]) => `
         <div class="filter-item">
           <div class="filter-name">${filter}</div>
           <div class="filter-stats">
@@ -299,6 +299,127 @@ class ProjectUI {
         }
       }, { once: false });
     }
+    // --- Project images gallery (JPGs) ---
+    // Create container if missing
+    let galleryWrap = document.getElementById('projectImagesGalleryWrap');
+    if (!galleryWrap) {
+      galleryWrap = document.createElement('div');
+      galleryWrap.id = 'projectImagesGalleryWrap';
+      galleryWrap.className = 'project-images-wrap';
+      const detailsViewBody = detailsView.querySelector('.details-body') || detailsView;
+      detailsViewBody.appendChild(galleryWrap);
+    }
+    // Render gallery (async)
+    (async () => {
+      try {
+        console.log('[ProjectUI] populateProjectDetails called for project:', project);
+        console.log('[ProjectUI] Project path:', project.path, 'Project name:', project.name);
+        const images = await this._listProjectJpgs(project.path || project.name);
+        console.log('[ProjectUI] _listProjectJpgs returned:', images);
+        this._renderProjectImageGallery(galleryWrap, images);
+      } catch (e) {
+        console.error('[ProjectUI] Failed to load project images', e);
+        galleryWrap.innerHTML = '<div class="gallery-error">Could not load project images</div>';
+      }
+    })();
+  }
+
+  // Discover .jpg/.jpeg files inside project path. Returns array of { path, mtime }
+  async _listProjectJpgs(projectPath) {
+    console.log('[ProjectUI] _listProjectJpgs called with projectPath:', projectPath);
+    try {
+      // 1) If explicit path provided, call listProjectImages(path)
+      if (projectPath && window.electronAPI && typeof window.electronAPI.listProjectImages === 'function') {
+        console.log('[ProjectUI] Trying listProjectImages with path:', projectPath);
+        const res = await window.electronAPI.listProjectImages(projectPath);
+        console.log('[ProjectUI] listProjectImages returned:', res);
+        if (Array.isArray(res) && res.length) return res.filter(f => !!f.path).map(f => ({ path: f.path, mtime: f.mtime || 0 }));
+      }
+
+      // 2) If projectPath missing, or previous returned empty, try listProjectImagesForProject (projectName + storagePath)
+      // Many projects in DB store libraryPath or created without explicit path; we can search by project name inside storagePath
+      if (window.electronAPI && typeof window.electronAPI.listProjectImagesForProject === 'function') {
+        // projectPath may actually be a project name in some schemas; try both
+        const maybeName = projectPath;
+        console.log('[ProjectUI] Getting settings for fallback search...');
+        const settings = (window.electronAPI.getSettings && await window.electronAPI.getSettings()) || {};
+        console.log('[ProjectUI] Settings:', settings);
+        const storage = settings.storagePath || (projectPath && typeof projectPath === 'string' && projectPath.includes('/') ? null : null);
+        // If we have a settings.storagePath, use projectPath as name; otherwise attempt a pass with available args
+        if (settings.storagePath && maybeName) {
+          console.log('[ProjectUI] Trying listProjectImagesForProject with name:', maybeName, 'storage:', settings.storagePath);
+          const list = await window.electronAPI.listProjectImagesForProject(maybeName, settings.storagePath);
+          console.log('[ProjectUI] listProjectImagesForProject returned:', list);
+          if (Array.isArray(list) && list.length) return list.map(f => ({ path: f.path, mtime: f.mtime || 0 }));
+        }
+      }
+
+      // 3) Try a generic list-project-images on projectPath (if provided) as fallback
+      if (projectPath && window.electronAPI && typeof window.electronAPI.listProjectImages === 'function') {
+        console.log('[ProjectUI] Final fallback: trying listProjectImages again with:', projectPath);
+        const res2 = await window.electronAPI.listProjectImages(projectPath);
+        console.log('[ProjectUI] Final fallback returned:', res2);
+        if (Array.isArray(res2) && res2.length) return res2.map(f => ({ path: f.path, mtime: f.mtime || 0 }));
+      }
+    } catch (e) {
+      console.warn('listProjectJpgs fallback failed', e);
+    }
+    console.log('[ProjectUI] _listProjectJpgs returning empty array');
+    return [];
+  }
+
+  _renderProjectImageGallery(container, images) {
+    container.innerHTML = '';
+    const title = document.createElement('h3');
+    title.textContent = 'Project Images';
+    container.appendChild(title);
+
+    if (!images || images.length === 0) {
+      console.debug('[ProjectUI] No images returned for gallery; images array:', images);
+      const msg = document.createElement('div'); msg.className = 'empty-state'; msg.textContent = 'No JPG images found in project folder.'; container.appendChild(msg); return;
+    }
+
+    // Sort by mtime ascending (old -> new)
+    images.sort((a,b) => (a.mtime || 0) - (b.mtime || 0));
+
+    const grid = document.createElement('div'); grid.className = 'project-images-grid';
+    for (const img of images) {
+      const cell = document.createElement('div'); cell.className = 'project-image-cell';
+      const thumb = document.createElement('div'); thumb.className = 'project-image-thumb';
+      const imgTag = document.createElement('img');
+      // Use low-res thumbnail by setting src to file:// - rely on CSS to size
+      imgTag.src = `file://${img.path}`;
+      imgTag.alt = img.path.split('/').pop();
+      thumb.appendChild(imgTag);
+      const caption = document.createElement('div'); caption.className = 'project-image-caption';
+      const d = img.mtime ? new Date(img.mtime) : null;
+      caption.textContent = d ? d.toLocaleString() : '';
+      cell.appendChild(thumb);
+      cell.appendChild(caption);
+      cell.addEventListener('click', (e) => {
+        // Open in ImageViewer module inline inside the project details view
+        const viewer = window.ImageViewer;
+        const host = document.getElementById('projectDetailsView') || document.getElementById('projectDetailsView');
+        if (viewer && typeof viewer.showWithOptions === 'function') {
+          try {
+            viewer.showWithOptions(`file://${img.path}`, { container: host });
+          } catch (err) {
+            console.error('[ProjectUI] Failed to open inline viewer, falling back to modal open', err);
+            // Try modal fallback
+            if (viewer && typeof viewer.show === 'function') viewer.show(`file://${img.path}`);
+            else window.open(`file://${img.path}`);
+          }
+        } else if (viewer && typeof viewer.show === 'function') {
+          // older API fallback
+          viewer.show(`file://${img.path}`);
+        } else {
+          // fallback: open external image
+          window.open(`file://${img.path}`);
+        }
+      });
+      grid.appendChild(cell);
+    }
+    container.appendChild(grid);
   }
 
   updateProjectCard(project) {
@@ -306,7 +427,12 @@ class ProjectUI {
     let targetCard = null;
     for (const card of projectCards) {
       const pathAttr = card.getAttribute('data-path');
-      if (pathAttr === project.path) { targetCard = card; break; }
+      const idAttr = card.getAttribute('data-id');
+      // Match by path when available, otherwise fall back to project id
+      if ((pathAttr && project.path && pathAttr === project.path) || (idAttr && String(idAttr) === String(project.id))) {
+        targetCard = card;
+        break;
+      }
     }
     if (!targetCard) return;
     const nameEl = targetCard.querySelector('.project-name');
@@ -331,12 +457,6 @@ class ProjectUI {
           <circle cx="12" cy="12" r="3"/>
           <line x1="12" y1="2" x2="12" y2="6"/>
           <line x1="12" y1="18" x2="12" y2="22"/>
-          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
-          <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
-          <line x1="2" y1="12" x2="6" y2="12"/>
-          <line x1="18" y1="12" x2="22" y2="12"/>
-          <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
-          <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
         </svg>`;
       }
     }
@@ -378,7 +498,7 @@ class ProjectUI {
           <button class="btn-primary" id="saveProjectBtn">Save Changes</button>
         </div>
       </div>`;
-    setTimeout(()=> this._wireEditModal(modal, project),0);
+    setTimeout(() => this._wireEditModal(modal, project), 0);
     return modal;
   }
 
@@ -398,7 +518,7 @@ class ProjectUI {
           <div class="blacklist-option" id="blacklistContainer" style="display:none;"><label class="checkbox-label"><input type="checkbox" id="blacklistProject"><span class="checkmark"></span>Blacklist this project name</label></div>
         </div>
       </div>`;
-    setTimeout(()=> this._wireDeleteModal(modal, project),0);
+    setTimeout(() => this._wireDeleteModal(modal, project), 0);
     return modal;
   }
 
@@ -479,7 +599,7 @@ class ProjectUI {
       modal.querySelector('#deleteFilesOption').addEventListener('click', () => {
         this._confirmDeletion(project, true);
       });
-    },0);
+    }, 0);
   }
 
   _confirmDeletion(project, deleteFiles) {
@@ -514,7 +634,7 @@ class ProjectUI {
     const progressBar = showBar ? `<div class="integration-progress" style="width:${pctBar}%;"></div>` : '';
     const pctBadge = showBar ? `<span class="integration-badge">${pctRaw.toFixed(0)}%</span>` : '';
     return `
-      <div class="project-card" data-path="${project.path}" onclick="viewProject('${project.id}')">
+      <div class="project-card" data-id="${project.id}" data-path="${project.path || ''}" onclick="viewProject('${project.id}')">
         <div class="project-image">
           <div class="project-icon thumb-wrapper">${thumb}<div class="thumb-spinner"></div></div>
           <div class="project-content">
@@ -565,14 +685,23 @@ class ProjectUI {
         const p = thumbEl.getAttribute('data-original');
         if (p && cache.data.has(p)) {
           this._applyThumb(thumbEl, p);
-        } else {
-          this._gridImageObserver.observe(thumbEl);
+        } else if (p) {
+          // If the element is currently visible (active tab / layouted), decode immediately.
+          // This fixes cases where IntersectionObserver doesn't trigger for items inside
+          // certain layout states (e.g. tab containers). Otherwise fall back to observer.
+          const isInActiveTab = !!thumbEl.closest('.tab-content.active');
+          const hasLayout = thumbEl.offsetParent !== null || (thumbEl.getBoundingClientRect && thumbEl.getBoundingClientRect().width > 0);
+          if (isInActiveTab || hasLayout) {
+            this._scheduleDecode(() => this._applyThumb(thumbEl, p));
+          } else {
+            this._gridImageObserver.observe(thumbEl);
+          }
         }
       });
     };
 
     const frag = () => document.createDocumentFragment();
-    const perfLog = (label, t0) => { if (window.__CONST_DEBUG_PERF) console.log('[ProjectGridPerf]', label, (performance.now()-t0).toFixed(1)+'ms'); };
+    const perfLog = (label, t0) => { if (window.__CONST_DEBUG_PERF) console.log('[ProjectGridPerf]', label, (performance.now() - t0).toFixed(1) + 'ms'); };
 
     const renderBatch = () => {
       const t0 = performance.now();
@@ -586,7 +715,7 @@ class ProjectUI {
       container.appendChild(fragment);
       observeNew(container);
       index = end;
-      perfLog('batch '+end+'/'+total, t0);
+      perfLog('batch ' + end + '/' + total, t0);
       if (index < total) {
         (window.requestIdleCallback ? window.requestIdleCallback(renderBatch, { timeout: 120 }) : setTimeout(renderBatch, 16));
       } else {

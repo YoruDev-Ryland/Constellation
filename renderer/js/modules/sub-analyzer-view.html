@@ -1,0 +1,175 @@
+<!-- Sub-Frame Analyzer View Content -->
+<header class="content-header">
+  <div class="header-title-section">
+    <button class="btn-back" id="backToToolsBtn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+    </button>
+    <div class="title-info">
+      <h1>Sub-Frame Quality Analyzer</h1>
+      <p class="subtitle">Analysis Tool</p>
+    </div>
+  </div>
+</header>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div id="analyzer-status-message" class="status"></div>
+</div>
+
+  <div class="analyzer-container">
+    <!-- Step 1: Folder Selection -->
+    <section class="detail-section">
+      <h3>Select FITS Folder</h3>
+      <p>Choose the folder containing your sub-frames to analyze</p>
+      
+      <div class="step-body">
+        <div class="folder-selection">
+          <button id="select-analysis-folder-btn" class="btn-primary large">
+            📂 Select FITS Folder
+          </button>
+          <div class="folder-info">
+            <p id="selected-folder-path">No folder selected</p>
+            <p id="fits-file-count" class="file-count">0 FITS files found</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 2: Reference Frame Selection -->
+    <section class="detail-section" id="reference-step" style="display: none;">
+      <h3>Select Reference Frame</h3>
+      <p>Choose the best sub-frame from your folder as the quality baseline</p>
+      
+      <div class="step-body">
+        <div class="reference-selection">
+          <div class="fits-files-grid" id="fits-files-grid">
+            <!-- FITS files will be populated here -->
+          </div>
+          <div id="selected-reference-info" class="reference-info" style="display: none;">
+            <!-- Reference frame info will be shown here -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 3: Quality Thresholds -->
+    <section class="detail-section" id="thresholds-step" style="display: none;">
+      <h3>Quality Thresholds</h3>
+      <p>Adjust the criteria for determining good vs bad sub-frames</p>
+      
+      <div class="step-body">
+        <div class="thresholds-grid">
+          <div class="threshold-group">
+            <label>FWHM (Full Width Half Maximum)</label>
+            <div class="threshold-inputs">
+              <div class="input-group">
+                <label>Max:</label>
+                <input type="number" class="threshold-input" 
+                       data-metric="fwhm" data-type="max" 
+                       value="5.0" step="0.1" min="0.5" max="15">
+                <span>px</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="threshold-group">
+            <label>Star Count</label>
+            <div class="threshold-inputs">
+              <div class="input-group">
+                <label>Min:</label>
+                <input type="number" class="threshold-input" 
+                       data-metric="stars" data-type="min" 
+                       value="50" step="10" min="10" max="5000">
+                <span>stars</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="threshold-group">
+            <label>Background Noise</label>
+            <div class="threshold-inputs">
+              <div class="input-group">
+                <label>Max:</label>
+                <input type="number" class="threshold-input" 
+                       data-metric="noise" data-type="max" 
+                       value="0.1" step="0.01" min="0.01" max="0.5">
+                <span>%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="threshold-group">
+            <label>Tracking Error</label>
+            <div class="threshold-inputs">
+              <div class="input-group">
+                <label>Max:</label>
+                <input type="number" class="threshold-input" 
+                       data-metric="tracking" data-type="max" 
+                       value="3.0" step="0.1" min="0.1" max="20">
+                <span>px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="step-actions">
+          <button id="start-analysis-btn" class="btn-success large" disabled>
+            ▶️ Start Analysis
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 4: Analysis Progress -->
+    <section class="detail-section" id="progress-step" style="display: none;">
+      <h3>Analyzing Sub-Frames</h3>
+      <p>Processing your FITS files and evaluating quality metrics</p>
+      
+      <div class="step-body">
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div id="analysis-progress-fill" class="progress-fill"></div>
+          </div>
+          <div id="progress-text" class="progress-text">Ready to start</div>
+          
+          <div class="analysis-controls">
+            <button id="stop-analysis-btn" class="btn-danger" disabled>
+              ⏹️ Stop Analysis
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 5: Review Results -->
+    <section class="detail-section" id="results-step" style="display: none;">
+      <h3>Review Results</h3>
+      <p>Review the automatic classification and manually adjust if needed</p>
+      
+      <div class="step-body">
+        <div class="results-summary">
+          <div class="result-stats" id="result-stats">
+            <!-- Stats will be populated here -->
+          </div>
+        </div>
+        
+        <div class="results-actions">
+          <button id="export-results-btn" class="btn-secondary">
+            💾 Export Results CSV
+          </button>
+          <button id="archive-bad-frames-btn" class="btn-warning">
+            📁 Archive Bad Frames
+          </button>
+          <button id="reset-analysis-btn" class="btn-primary">
+            🔄 New Analysis
+          </button>
+        </div>
+        
+        <div class="results-review" id="results-review">
+          <!-- Review interface will be populated here -->
+        </div>
+      </div>
+    </section>
+  </div>
