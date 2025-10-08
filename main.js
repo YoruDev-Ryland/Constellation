@@ -298,6 +298,70 @@ ipcMain.handle('copy-thumbnail-to-project', async (event, sourcePath, projectNam
   }
 });
 
+// Fetch a thumbnail for a project name from NASA Images API as a minimal default
+ipcMain.handle('fetch-project-thumbnail', async (event, projectName, storagePath) => {
+  try {
+    if (!projectName || !storagePath) return { success: false, error: 'Missing args' };
+    const thumbnailsDir = path.join(storagePath, '.constellation-thumbnails');
+    await fs.mkdir(thumbnailsDir, { recursive: true });
+
+    // Simple search using NASA Images API
+    const query = encodeURIComponent(projectName);
+    const apiUrl = `https://images-api.nasa.gov/search?q=${query}&media_type=image`;
+
+    const resp = await new Promise((resolve, reject) => {
+      https.get(apiUrl, (res) => {
+        let body = '';
+        res.on('data', (chunk) => body += chunk);
+        res.on('end', () => resolve({ statusCode: res.statusCode, body }));
+      }).on('error', (e) => reject(e));
+    });
+
+    if (!resp || resp.statusCode !== 200) return { success: false, error: 'NASA API request failed' };
+    let parsed = {};
+    try { parsed = JSON.parse(resp.body); } catch (e) { return { success: false, error: 'Invalid NASA response' }; }
+
+    const items = parsed.collection && Array.isArray(parsed.collection.items) ? parsed.collection.items : [];
+    if (!items.length) return { success: false, error: 'No images found' };
+
+    // Find an item with at least one link that's an image
+    let imageUrl = null;
+    for (const item of items) {
+      if (item.links && Array.isArray(item.links)) {
+        const l = item.links.find(x => x.href && /\.jpe?g|\.png$/i.test(x.href));
+        if (l) { imageUrl = l.href; break; }
+      }
+      // fallback: check in hrefs within data
+      if (item.href && typeof item.href === 'string') {
+        imageUrl = item.href; break;
+      }
+    }
+
+    if (!imageUrl) return { success: false, error: 'No suitable image link found' };
+
+    // Download the image into thumbnailsDir
+    const ext = path.extname(new URL(imageUrl).pathname) || '.jpg';
+    const safeName = projectName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const destPath = path.join(thumbnailsDir, `${safeName}${ext}`);
+
+    const fileData = await new Promise((resolve, reject) => {
+      https.get(imageUrl, (res) => {
+        if (res.statusCode !== 200) return reject(new Error('Bad image response: ' + res.statusCode));
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve(Buffer.concat(chunks)));
+      }).on('error', (e) => reject(e));
+    });
+
+    await fs.writeFile(destPath, fileData);
+
+    return { success: true, thumbnailPath: destPath, source: 'nasa' };
+  } catch (error) {
+    console.error('fetch-project-thumbnail failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Scan project folder for actual file data
 ipcMain.handle('scan-project-files', async (event, projectName, storagePath) => {
   try {

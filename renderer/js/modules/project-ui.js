@@ -452,12 +452,21 @@ class ProjectUI {
           this._scheduleDecode(() => this._applyThumb(thumbEl, p));
         }
       } else {
-        iconEl.innerHTML = `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <circle cx="12" cy="12" r="10"/>
-          <circle cx="12" cy="12" r="3"/>
-          <line x1="12" y1="2" x2="12" y2="6"/>
-          <line x1="12" y1="18" x2="12" y2="22"/>
-        </svg>`;
+        iconEl.innerHTML = `<div class="thumb-placeholder skeleton"></div>`;
+        // Kick off a background fetch to populate a thumbnail if possible
+        this.ensureProjectThumbnail(project).then((path) => {
+          if (path) {
+            const cache = this._getCache();
+            const p = path;
+            if (cache.data.has(p)) {
+              iconEl.innerHTML = `<div class="project-thumb thumb-loaded has-image" style="background-image: ${cache.data.get(p)}; background-size: cover; background-position: center; background-repeat: no-repeat;"></div>`;
+            } else {
+              iconEl.innerHTML = `<div class="project-thumb lazy-thumb" data-original="${p}"></div><div class="thumb-spinner"></div>`;
+              const thumbEl = iconEl.querySelector('.project-thumb');
+              this._scheduleDecode(() => this._applyThumb(thumbEl, p));
+            }
+          }
+        }).catch(e => console.debug('Background thumbnail fetch failed', e));
       }
     }
   }
@@ -523,7 +532,27 @@ class ProjectUI {
   }
 
   _wireEditModal(modal, project) {
-    const close = () => modal.remove();
+    // Install a capture-phase keydown handler to prevent global listeners
+    // from intercepting typing while an input inside the modal is focused.
+    const _captureKeyHandler = (e) => {
+      try {
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+          // Prevent other listeners from running and potentially calling preventDefault()
+          e.stopImmediatePropagation();
+          // Do NOT call preventDefault() here — we want the keystroke to reach the input.
+        }
+      } catch (err) {
+        // Fail silently
+      }
+    };
+    window.addEventListener('keydown', _captureKeyHandler, true);
+
+    const close = () => {
+      try { window.removeEventListener('keydown', _captureKeyHandler, true); } catch (e) {}
+      modal.remove();
+    };
+
     modal.querySelector('#closeEditModal').addEventListener('click', close);
     modal.querySelector('#cancelEditBtn').addEventListener('click', close);
     modal.addEventListener('click', e => { if (e.target === modal) close(); });
@@ -544,15 +573,20 @@ class ProjectUI {
     });
     modal.querySelector('#autoFindThumbnailBtn').addEventListener('click', async () => {
       try {
-        const result = await this.findThumbnail(project.name);
-        if (result.success && result.thumbnailPath) {
+        // First try the existing findThumbnail hook (which may check project folder)
+        let result = await this.findThumbnail(project.name);
+        if (!result || !result.success) {
+          // Fallback: fetch from NASA Images API via main process
+          result = await window.electronAPI.fetchProjectThumbnail(project.name, (await window.electronAPI.getSettings()).storagePath);
+        }
+        if (result && result.success && result.thumbnailPath) {
           project.thumbnailPath = result.thumbnailPath;
           await this.saveProjects(this.getProjects());
           this.updateProjectCard(project);
           this.populateProjectDetails(project);
           modal.querySelector('#thumbnailPreview').innerHTML = `<img src="file://${project.thumbnailPath}" alt="Project thumbnail">`;
         } else {
-          alert(result.error || 'No thumbnail images found');
+          alert(result?.error || 'No thumbnail images found');
         }
       } catch (e) { console.error('Thumbnail search failed', e); alert('Error finding thumbnail'); }
     });
@@ -585,6 +619,15 @@ class ProjectUI {
         document.body.appendChild(delModal);
       }, 100);
     });
+
+    // Autofocus the project name input so users can immediately type
+    try {
+      const nameInput = modal.querySelector('#editProjectName');
+      if (nameInput) {
+        // Give the browser a tick to ensure element is focusable
+        setTimeout(() => { nameInput.focus(); nameInput.select && nameInput.select(); }, 50);
+      }
+    } catch (err) { /* ignore focus errors */ }
   }
 
   _wireDeleteModal(modal, project) {
@@ -619,6 +662,64 @@ class ProjectUI {
       <circle cx="9" cy="9" r="2"/>
       <path d="M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
     </svg>`;
+  }
+
+  // Ensure a thumbnail exists: try local findThumbnail, then fetch from external API if none
+  async ensureProjectThumbnail(project) {
+    try {
+      if (!project) return null;
+      // If a thumbnail is already set, prefer it
+      if (project.thumbnailPath) return project.thumbnailPath;
+
+      // Try to find an image in the project folder first
+      try {
+        const settings = await window.electronAPI.getSettings();
+        const storage = settings.storagePath || null;
+        if (project.path) {
+          const localList = await window.electronAPI.listProjectImages(project.path);
+          if (Array.isArray(localList) && localList.length) {
+            // Use the newest JPG as thumbnail
+            localList.sort((a,b) => b.mtime - a.mtime);
+            const newest = localList[0];
+            project.thumbnailPath = newest.path;
+            await this.saveProjects(this.getProjects());
+            this.updateProjectCard(project);
+            return project.thumbnailPath;
+          }
+        } else if (storage) {
+          // If no explicit project.path, try find by name
+          const found = await window.electronAPI.findProjectThumbnail(project.name, storage);
+          if (found && found.success && found.thumbnailPath) {
+            project.thumbnailPath = found.thumbnailPath;
+            await this.saveProjects(this.getProjects());
+            this.updateProjectCard(project);
+            return project.thumbnailPath;
+          }
+        }
+      } catch (e) {
+        console.debug('Local thumbnail search failed', e);
+      }
+
+      // No local thumbnail found: fetch from external NASA API (background)
+      try {
+        const settings = await window.electronAPI.getSettings();
+        const storage = settings.storagePath || null;
+        const result = await window.electronAPI.fetchProjectThumbnail(project.name, storage);
+        if (result && result.success && result.thumbnailPath) {
+          project.thumbnailPath = result.thumbnailPath;
+          await this.saveProjects(this.getProjects());
+          this.updateProjectCard(project);
+          return project.thumbnailPath;
+        }
+      } catch (e) {
+        console.debug('External thumbnail fetch failed', e);
+      }
+
+      return null;
+    } catch (e) {
+      console.error('ensureProjectThumbnail error', e);
+      return null;
+    }
   }
 
   // Override project card markup to use div with background-image like calendar

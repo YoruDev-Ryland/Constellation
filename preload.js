@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadLibraryDatabase: () => ipcRenderer.invoke('load-library-database'),
   saveLibraryDatabase: (data) => ipcRenderer.invoke('save-library-database', data),
   findProjectThumbnail: (projectName, storagePath) => ipcRenderer.invoke('find-project-thumbnail', projectName, storagePath),
+  fetchProjectThumbnail: (projectName, storagePath) => ipcRenderer.invoke('fetch-project-thumbnail', projectName, storagePath),
   selectCustomThumbnail: () => ipcRenderer.invoke('select-custom-thumbnail'),
   copyThumbnailToProject: (sourcePath, projectName, storagePath) => ipcRenderer.invoke('copy-thumbnail-to-project', sourcePath, projectName, storagePath),
   scanProjectFiles: (projectName, storagePath) => ipcRenderer.invoke('scan-project-files', projectName, storagePath),
