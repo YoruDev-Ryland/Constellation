@@ -1,0 +1,20 @@
+{
+  "id": "example-tool",
+  "name": "Example Analysis Tool",
+  "description": "Template for creating new analysis tools with standard integration patterns.",
+  "icon": "fas fa-cog",
+  "buttonId": "exampleToolBtn",
+  "enabled": false,
+  "order": 999,
+  "metadata": {
+    "version": "1.0.0",
+    "author": "Tool Developer",
+    "category": "analysis",
+    "dependencies": ["chart.js"],
+    "files": {
+      "script": "js/modules/tools/example-tool.js",
+      "style": "css/modules/tools/example-tool.css",
+      "view": "views/example-tool.html"
+    }
+  }
+}

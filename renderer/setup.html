@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Constellation - Setup</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/modules/modal-manager.css">
 </head>
 <body class="setup-page">
   <div class="setup-container">
@@ -99,6 +100,55 @@
       </div>
 
       <div class="setup-step" id="step5">
+        <h2>Observatory Location</h2>
+        <p>Set your observing location for accurate altitude calculations</p>
+        
+        <div class="form-group">
+          <label for="observatoryName">Observatory Name (Optional)</label>
+          <input type="text" id="observatoryName" placeholder="e.g., My Backyard Observatory">
+        </div>
+        
+        <div class="observatory-presets">
+          <label>Quick Select Popular Remote Observatories:</label>
+          <div class="preset-buttons">
+            <button type="button" class="btn btn-secondary preset-btn" data-preset="sfro">
+              <div class="preset-name">SFRO</div>
+              <div class="preset-details">Starfront Remote Observatory<br>Texas, USA</div>
+            </button>
+            <button type="button" class="btn btn-secondary preset-btn" data-preset="udro">
+              <div class="preset-name">UDRO</div>
+              <div class="preset-details">Utah Desert Remote Observatory<br>Utah, USA</div>
+            </button>
+            <button type="button" class="btn btn-secondary preset-btn" data-preset="sl">
+              <div class="preset-name">Sierra-Leona</div>
+              <div class="preset-details">Sierra-Leona Observatory<br>Animas, NM, USA</div>
+            </button>
+            <button type="button" class="btn btn-secondary preset-btn" data-preset="tio">
+              <div class="preset-name">TIO</div>
+              <div class="preset-details">Telescope.io Observatory<br>Nerpio, Spain</div>
+            </button>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="latitude">Latitude (°)</label>
+            <input type="number" id="latitude" placeholder="e.g., 36.463" step="0.000001" min="-90" max="90">
+          </div>
+          <div class="form-group">
+            <label for="longitude">Longitude (°)</label>
+            <input type="number" id="longitude" placeholder="e.g., -105.821" step="0.000001" min="-180" max="180">
+          </div>
+          <div class="form-group">
+            <label for="elevation">Elevation (m)</label>
+            <input type="number" id="elevation" placeholder="e.g., 2100" step="1" min="0" max="10000">
+          </div>
+        </div>
+        
+        <p class="hint">Location is used for altitude timeline calculations and target visibility analysis</p>
+      </div>
+
+      <div class="setup-step" id="step6">
         <h2>Premium License</h2>
         <p>Unlock advanced features with a premium license key</p>
         
@@ -116,7 +166,27 @@
         
         <button class="btn btn-danger" id="deactivateLicenseBtn" style="display: none;">Deactivate License</button>
       </div>
-    </div>
+
+      <div class="setup-step" id="step7">
+        <h2>Background Scanning</h2>
+        <p>Automatically scan for new images and projects in the background</p>
+        
+        <div class="checkbox-group">
+          <input type="checkbox" id="enableBackgroundScan" checked>
+          <label for="enableBackgroundScan">Enable automatic background scanning</label>
+        </div>
+        
+        <div class="form-group" id="backgroundFrequencyGroup">
+          <label for="backgroundScanHours">Scan frequency</label>
+          <select id="backgroundScanHours">
+            <option value="1">Every hour</option>
+            <option value="2">Every 2 hours</option>
+            <option value="4" selected>Every 4 hours</option>
+            <option value="8">Every 8 hours</option>
+            <option value="24">Once daily</option>
+          </select>
+        </div>
+      </div>
 
     <div class="setup-actions">
       <div class="left-actions">
@@ -207,6 +277,7 @@
     </div>
   </div>
 
+  <script src="js/modules/modal-manager.js"></script>
   <script src="js/setup.js"></script>
 </body>
 </html>

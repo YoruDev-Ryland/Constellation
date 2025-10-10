@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="css/modules/project-ui-images.css">
   <link rel="stylesheet" href="css/modules/cleanup-manager.css">
   <link rel="stylesheet" href="css/modules/social-manager.css">
+  <link rel="stylesheet" href="css/modules/tools/altitude-timeline.css">
+  <link rel="stylesheet" href="css/modules/modal-manager.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -325,125 +327,36 @@
         </header>
 
         <div class="tools-grid">
-          <!-- H-R Diagram Tool -->
-          <div class="tool-card">
-            <div class="tool-icon">
-              <i class="fas fa-chart-area" aria-hidden="true"></i>
-            </div>
-            <div class="tool-content">
-              <h3>H-R Diagram Generator</h3>
-              <p>Create Hertzsprung-Russell diagrams from stellar field images. Automatically detect stars, perform
-                photometry, and plot stellar evolution relationships.</p>
-              <div class="tool-features">
-                <span class="feature-tag">Star Detection</span>
-                <span class="feature-tag">Photometry</span>
-                <span class="feature-tag">Color Analysis</span>
-                <span class="feature-tag">Data Export</span>
-              </div>
-              <button class="btn-primary tool-launch-btn" id="hrDiagramBtn">
-                <i class="fas fa-play" aria-hidden="true"></i>
-                Launch Tool
-              </button>
-            </div>
-          </div>
-
-          <!-- Sub-Frame Quality Analyzer -->
-          <div class="tool-card">
-            <div class="tool-icon">
-              <i class="fas fa-microscope" aria-hidden="true"></i>
-            </div>
-            <div class="tool-content">
-              <h3>Sub-Frame Quality Analyzer</h3>
-              <p>Automatically analyze thousands of sub-frames against a reference image to identify good and bad
-                exposures. Save hours of manual sorting.</p>
-              <div class="tool-features">
-                <span class="feature-tag">FWHM Analysis</span>
-                <span class="feature-tag">Star Detection</span>
-                <span class="feature-tag">Noise Assessment</span>
-                <span class="feature-tag">Batch Processing</span>
-                <span class="feature-tag">Auto-Sorting</span>
-              </div>
-              <button class="btn-primary tool-launch-btn" id="subAnalyzerBtn">
-                <i class="fas fa-play" aria-hidden="true"></i>
-                Launch Tool
-              </button>
-            </div>
-          </div>
-
-          <!-- Placeholder for future tools -->
-          <div class="tool-card placeholder">
-            <div class="tool-icon placeholder-icon">
-              <i class="fas fa-plus-circle" aria-hidden="true"></i>
-            </div>
-            <div class="tool-content">
-              <h3>More Tools Coming Soon</h3>
-              <p>Additional analysis tools will be added here, including spectral analysis, astrometry, and photometric
-                calibration.</p>
-              <div class="tool-features">
-                <span class="feature-tag upcoming">Spectral Analysis</span>
-                <span class="feature-tag upcoming">Astrometry</span>
-                <span class="feature-tag upcoming">Calibration</span>
-              </div>
-              <button class="btn-secondary" disabled>
-                <i class="fas fa-hourglass" aria-hidden="true"></i>
-                Coming Soon
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tool Categories -->
-        <div class="tool-categories">
-          <h2>Tool Categories</h2>
-          <div class="category-grid">
-            <div class="category-card">
-              <div class="category-icon">
-                  <i class="fas fa-star" aria-hidden="true"></i>
-                </div>
-              <h3>Stellar Analysis</h3>
-              <p>Tools for analyzing individual stars and stellar populations</p>
-              <ul>
-                <li>H-R Diagram Generation</li>
-                <li>Color-Magnitude Diagrams</li>
-                <li>Variable Star Analysis</li>
-                <li>Binary Star Detection</li>
-              </ul>
-            </div>
-
-            <div class="category-card upcoming">
-              <div class="category-icon">
-                <i class="fas fa-meteor" aria-hidden="true"></i>
-              </div>
-              <h3>Deep Sky Objects</h3>
-              <p>Analysis tools for nebulae, galaxies, and clusters</p>
-              <ul>
-                <li>Surface Brightness Profiles</li>
-                <li>Galaxy Classification</li>
-                <li>Nebula Emission Analysis</li>
-                <li>Cluster Photometry</li>
-              </ul>
-            </div>
-
-            <div class="category-card upcoming">
-              <div class="category-icon">
-                <i class="fas fa-crosshairs" aria-hidden="true"></i>
-              </div>
-              <h3>Astrometry & Calibration</h3>
-              <p>Precision measurement and calibration tools</p>
-              <ul>
-                <li>Plate Solving</li>
-                <li>Coordinate Systems</li>
-                <li>Photometric Calibration</li>
-                <li>Distortion Correction</li>
-              </ul>
-            </div>
-          </div>
+          <!-- Tool cards will be dynamically generated here -->
         </div>
       </div>
 
       <!-- Sub-Frame Analyzer View -->
       <div class="view" id="subAnalyzerView">
         <!-- Content will be loaded from modules/sub-analyzer-view.html -->
+      </div>
+
+      <!-- Altitude Timeline View -->
+      <div class="view" id="altitudeTimelineView">
+        <header class="content-header">
+          <div class="header-back">
+            <button class="btn-icon" id="backToToolsBtn" title="Back to Tools">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div>
+              <h1>Altitude Timeline</h1>
+              <p class="header-subtitle">Visualize celestial object positions throughout the year</p>
+            </div>
+          </div>
+        </header>
+        
+        <div class="tool-content-wrapper">
+          <div id="altitudeTimelineContainer">
+            <!-- Altitude timeline will be rendered here -->
+          </div>
+        </div>
       </div>
 
       <!-- Cleanup View -->
@@ -521,6 +434,7 @@
   </div>
 
   <!-- Core foundational modules -->
+  <script src="js/modules/modal-manager.js"></script>
   <script src="js/modules/license-manager.js"></script>
   <script src="js/modules/settings-manager.js"></script>
   <script src="js/modules/ui-utils.js"></script>
@@ -535,10 +449,14 @@
   <script src="js/modules/image-viewer.js"></script>
   <script src="js/modules/project-ui.js"></script>
 
+  <!-- Tool registry for dynamic tool loading -->
+  <script src="js/modules/tool-registry.js"></script>
+
   <!-- Feature modules -->
   <script src="js/modules/hr-diagram.js"></script>
   <script src="js/modules/hr-diagram-ui.js"></script>
   <script src="js/modules/sub-analyzer.js"></script>
+  <script src="js/modules/tools/altitude-timeline.js"></script>
   
   <!-- Social Media modules -->
   <script src="js/modules/social-platform-base.js"></script>

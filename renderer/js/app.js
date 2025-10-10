@@ -238,6 +238,13 @@ async function init() {
   const license = ensureLicenseManager();
   await license.initialize();
   
+  // Initialize tool registry
+  if (window.ToolRegistry) {
+    const toolRegistry = new window.ToolRegistry();
+    await toolRegistry.init();
+    window.toolRegistry = toolRegistry;
+  }
+  
   try {
     const db = await window.electronAPI.getLibraryDatabase?.();
     console.log('Loaded database:', db ? 'found' : 'not found', db?.targets?.length || 0, 'targets');
@@ -655,6 +662,50 @@ async function openSubFrameAnalyzer() {
   }
 }
 
+// Altitude Timeline Integration
+async function openAltitudeTimeline() {
+  console.log('Opening Altitude Timeline');
+  
+  try {
+    // Show the altitude timeline view
+    switchView('altitudeTimeline');
+    
+    // Initialize the altitude timeline if not already done
+    if (!window.altitudeTimeline) {
+      // Give the DOM a moment to update before initializing
+      setTimeout(() => {
+        try {
+          console.log('Initializing Altitude Timeline...');
+          window.altitudeTimeline = new AltitudeTimeline('altitudeTimelineContainer');
+          
+          // Load user's location from settings if available
+          if (settings && settings.observatoryLocation) {
+            window.altitudeTimeline.setLocation(settings.observatoryLocation);
+            console.log('Observatory location loaded from settings:', settings.observatoryLocation);
+          } else {
+            console.log('No observatory location found in settings');
+          }
+          
+          console.log('Altitude Timeline initialized successfully');
+        } catch (error) {
+          console.error('Error initializing Altitude Timeline:', error);
+          alert('Error initializing Altitude Timeline: ' + error.message);
+        }
+      }, 100);
+    } else {
+      // If already initialized, update location from settings
+      if (settings && settings.observatoryLocation) {
+        window.altitudeTimeline.setLocation(settings.observatoryLocation);
+      }
+    }
+    
+    console.log('Altitude Timeline view opened successfully');
+  } catch (error) {
+    console.error('Error opening Altitude Timeline:', error);
+    alert('Error opening Altitude Timeline: ' + error.message);
+  }
+}
+
 // H-R Diagram Integration
 function createHRDiagram() {
   console.log('Creating H-R Diagram interface');
@@ -727,6 +778,24 @@ function initializeToolsView() {
     console.log('Sub-Frame Analyzer button listener added');
   } else {
     console.warn('Sub-Frame Analyzer button not found in DOM');
+  }
+
+  // Add event listener for Altitude Timeline button if it exists
+  const altitudeTimelineButton = document.getElementById('altitudeTimelineBtn');
+  if (altitudeTimelineButton) {
+    // Remove any existing listeners
+    altitudeTimelineButton.replaceWith(altitudeTimelineButton.cloneNode(true));
+    const newAltitudeTimelineButton = document.getElementById('altitudeTimelineBtn');
+    
+    newAltitudeTimelineButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Altitude Timeline button clicked');
+      openAltitudeTimeline();
+    });
+    
+    console.log('Altitude Timeline button listener added');
+  } else {
+    console.warn('Altitude Timeline button not found in DOM');
   }
 
   // Add back to tools button handler

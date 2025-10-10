@@ -1,0 +1,9 @@
+{
+  "id": "altitude-timeline",
+  "name": "Altitude Timeline",
+  "description": "Visualize celestial object visibility from your location with interactive altitude charts and timeline slider.",
+  "icon": "fas fa-chart-line",
+  "buttonId": "altitudeTimelineBtn",
+  "enabled": true,
+  "order": 3
+}

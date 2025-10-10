@@ -1,0 +1,9 @@
+{
+  "id": "hr-diagram",
+  "name": "H-R Diagram Generator",
+  "description": "Create Hertzsprung-Russell diagrams from stellar field images with automatic star detection and photometry.",
+  "icon": "fas fa-chart-area",
+  "buttonId": "hrDiagramBtn",
+  "enabled": true,
+  "order": 1
+}

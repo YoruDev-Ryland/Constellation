@@ -9,12 +9,19 @@ let ignoreFolders = [];
 let enableBackgroundScan = true;
 let backgroundScanHours = 4;
 let licenseManager = null;
+let observatoryLocation = {
+  name: '',
+  latitude: null,
+  longitude: null,
+  elevation: null
+};
 
 // DOM elements - will be initialized when setupModalInit is called
 let storageInput, selectStorageBtn, cleanupInput, addCleanupBtn, cleanupTagsContainer;
 let ignoreInput, addIgnoreBtn, ignoreTagsContainer, licenseKeyInput, activateLicenseBtn;
 let deactivateLicenseBtn, licenseStatus, licenseActions, enableBackgroundScanCheckbox;
 let backgroundScanHoursSelect, backgroundFrequencyGroup, completeSetupBtn;
+let observatoryNameInput, latitudeInput, longitudeInput, elevationInput;
 
 // Initialize setup modal - call this when the modal content is loaded
 window.setupModalInit = function setupModalInit() {
@@ -36,6 +43,10 @@ window.setupModalInit = function setupModalInit() {
   backgroundScanHoursSelect = document.getElementById('backgroundScanHours');
   backgroundFrequencyGroup = document.getElementById('backgroundFrequencyGroup');
   completeSetupBtn = document.getElementById('completeSetupBtn');
+  observatoryNameInput = document.getElementById('observatoryName');
+  latitudeInput = document.getElementById('latitude');
+  longitudeInput = document.getElementById('longitude');
+  elevationInput = document.getElementById('elevation');
 
   // Add event listeners only if elements exist
   if (selectStorageBtn) {
@@ -97,6 +108,29 @@ window.setupModalInit = function setupModalInit() {
     completeSetupBtn.addEventListener('click', completeSetup);
   }
 
+  // Add event listeners for observatory location
+  if (observatoryNameInput) {
+    observatoryNameInput.addEventListener('input', updateObservatoryLocation);
+  }
+  if (latitudeInput) {
+    latitudeInput.addEventListener('input', updateObservatoryLocation);
+  }
+  if (longitudeInput) {
+    longitudeInput.addEventListener('input', updateObservatoryLocation);
+  }
+  if (elevationInput) {
+    elevationInput.addEventListener('input', updateObservatoryLocation);
+  }
+
+  // Add event listeners for preset buttons
+  const presetButtons = document.querySelectorAll('.preset-btn');
+  presetButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = btn.getAttribute('data-preset');
+      applyObservatoryPreset(preset);
+    });
+  });
+
   // Initialize the setup form
   if (typeof window.initializeSetupForm === 'function') {
     window.initializeSetupForm();
@@ -152,6 +186,55 @@ function onLicenseKeyInput(e) {
 function formatLicenseKeyString(value) {
   // Format as XXXX-XXXX-XXXX-XXXX
   return value.replace(/(.{4})/g, '$1-').slice(0, 19);
+}
+
+// Observatory location functions
+function updateObservatoryLocation() {
+  observatoryLocation = {
+    name: observatoryNameInput ? observatoryNameInput.value.trim() : '',
+    latitude: latitudeInput ? parseFloat(latitudeInput.value) || null : null,
+    longitude: longitudeInput ? parseFloat(longitudeInput.value) || null : null,
+    elevation: elevationInput ? parseFloat(elevationInput.value) || null : null
+  };
+}
+
+function applyObservatoryPreset(preset) {
+  const presets = {
+    sfro: {
+      name: 'Starfront Remote Observatory',
+      latitude: 30.6719,
+      longitude: -104.0147,
+      elevation: 1220
+    },
+    udro: {
+      name: 'Utah Desert Remote Observatory',
+      latitude: 38.343,
+      longitude: -113.688,
+      elevation: 1680
+    },
+    sl: {
+      name: 'Sierra-Leona Observatory',
+      latitude: 31.956,
+      longitude: -108.199,
+      elevation: 1430
+    },
+    tio: {
+      name: 'Telescope.io Observatory',
+      latitude: 38.133,
+      longitude: -2.367,
+      elevation: 1650
+    }
+  };
+
+  const selectedPreset = presets[preset];
+  if (selectedPreset) {
+    if (observatoryNameInput) observatoryNameInput.value = selectedPreset.name;
+    if (latitudeInput) latitudeInput.value = selectedPreset.latitude;
+    if (longitudeInput) longitudeInput.value = selectedPreset.longitude;
+    if (elevationInput) elevationInput.value = selectedPreset.elevation;
+    
+    updateObservatoryLocation();
+  }
 }
 
 // Initialize the setup form (load settings and render UI)
@@ -348,6 +431,13 @@ async function loadExistingSettings() {
       backgroundScanHours = settings.backgroundScanHours;
       backgroundScanHoursSelect.value = backgroundScanHours;
     }
+    if (settings.observatoryLocation) {
+      observatoryLocation = settings.observatoryLocation;
+      if (observatoryNameInput) observatoryNameInput.value = observatoryLocation.name || '';
+      if (latitudeInput) latitudeInput.value = observatoryLocation.latitude || '';
+      if (longitudeInput) longitudeInput.value = observatoryLocation.longitude || '';
+      if (elevationInput) elevationInput.value = observatoryLocation.elevation || '';
+    }
     
     // Update frequency group visibility
   if (backgroundFrequencyGroup) backgroundFrequencyGroup.style.display = enableBackgroundScan ? 'block' : 'none';
@@ -376,6 +466,7 @@ async function completeSetup() {
       ignoreFolders,
       enableBackgroundScan,
       backgroundScanHours,
+      observatoryLocation,
       setupCompleted: true
     };
 

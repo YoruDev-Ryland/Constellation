@@ -1,0 +1,9 @@
+{
+  "id": "sub-analyzer",
+  "name": "Sub-Frame Quality Analyzer",
+  "description": "Automatically analyze thousands of sub-frames to identify good and bad exposures based on FWHM and noise.",
+  "icon": "fas fa-microscope",
+  "buttonId": "subAnalyzerBtn",
+  "enabled": true,
+  "order": 2
+}
