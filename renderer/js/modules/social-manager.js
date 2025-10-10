@@ -280,10 +280,7 @@ class SocialManager {
           <div class="section-header">
             <h2>Connected Platforms</h2>
             <button class="btn-primary" id="addPlatformBtn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
+              <i class="fas fa-plus" aria-hidden="true"></i>
               Add Platform
             </button>
           </div>
@@ -309,9 +306,7 @@ class SocialManager {
           </div>
           <div id="recentPosts" class="recent-posts">
             <div class="empty-state">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-              </svg>
+              <i class="fas fa-comments fa-3x" aria-hidden="true"></i>
               <p>No posts yet. Create your first cross-post above!</p>
             </div>
           </div>
@@ -329,11 +324,7 @@ class SocialManager {
     if (registeredPlatforms.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="16"></line>
-            <line x1="8" y1="12" x2="16" y2="12"></line>
-          </svg>
+          <i class="fas fa-plug fa-3x" aria-hidden="true"></i>
           <p>No platform modules loaded. Platform modules will appear here when available.</p>
         </div>
       `;
@@ -347,23 +338,52 @@ class SocialManager {
 
       return `
         <div class="platform-card ${isConnected ? 'connected' : 'disconnected'}">
-          <div class="platform-icon">
-            ${platform.getIcon ? platform.getIcon() : this.getDefaultIcon(platformId)}
+          <div class="platform-header">
+            <div class="platform-icon">
+              ${platform.getIcon ? platform.getIcon() : this.getDefaultIcon(platformId)}
+            </div>
+            <div class="platform-basic-info">
+              <h3>${platform.displayName || platformId}</h3>
+              <p class="platform-status">
+                ${isConnected 
+                  ? `Connected${connectionInfo?.userInfo?.username ? ` as @${connectionInfo.userInfo.username}` : ''}`
+                  : 'Not connected'
+                }
+              </p>
+            </div>
           </div>
-          <div class="platform-info">
-            <h3>${platform.displayName || platformId}</h3>
-            <p class="platform-status">
-              ${isConnected 
-                ? `Connected${connectionInfo?.userInfo?.username ? ` as @${connectionInfo.userInfo.username}` : ''}`
-                : 'Not connected'
-              }
-            </p>
+          
+          <div class="platform-details">
             ${platform.description ? `<p class="platform-description">${platform.description}</p>` : ''}
+            ${isConnected && connectionInfo?.userInfo?.username ? `
+              <div class="platform-user-info">
+                <div class="user-avatar">${connectionInfo.userInfo.username.charAt(0).toUpperCase()}</div>
+                <span>@${connectionInfo.userInfo.username}</span>
+                ${connectionInfo.userInfo.name && connectionInfo.userInfo.name !== connectionInfo.userInfo.username ? 
+                  `<span class="user-display-name">(${connectionInfo.userInfo.name})</span>` : ''
+                }
+              </div>
+            ` : ''}
           </div>
+          
           <div class="platform-actions">
             ${isConnected 
-              ? `<button class="btn-danger platform-disconnect-btn" data-platform="${platformId}">Disconnect</button>`
-              : `<button class="btn-primary platform-connect-btn" data-platform="${platformId}">Connect</button>`
+              ? `
+                <button class="platform-disconnect-btn" data-platform="${platformId}">
+                  <i class="fas fa-unlink" aria-hidden="true"></i>
+                  Disconnect
+                </button>
+                <button class="platform-manage-btn" data-platform="${platformId}">
+                  <i class="fas fa-cog" aria-hidden="true"></i>
+                  Manage Settings
+                </button>
+              `
+              : `
+                <button class="platform-connect-btn" data-platform="${platformId}">
+                  <i class="fas fa-link" aria-hidden="true"></i>
+                  Connect Account
+                </button>
+              `
             }
           </div>
         </div>
@@ -382,9 +402,7 @@ class SocialManager {
     if (connectedPlatforms.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          </svg>
+          <i class="fas fa-exclamation-circle fa-3x" aria-hidden="true"></i>
           <p>Connect at least one platform to start posting</p>
         </div>
       `;
@@ -432,6 +450,17 @@ class SocialManager {
         </div>
 
         <div class="form-group">
+          <label for="postImageUrl">Image URL (public)</label>
+          <input 
+            type="url" 
+            id="postImageUrl" 
+            class="form-control" 
+            placeholder="https://your-cdn.example.com/astro.jpg"
+          >
+          <small class="form-hint">Instagram requires a publicly accessible image_url. Provide a URL to your image if posting to Instagram.</small>
+        </div>
+
+        <div class="form-group">
           <label for="postTags">Tags/Hashtags</label>
           <input 
             type="text" 
@@ -463,10 +492,7 @@ class SocialManager {
         <div class="form-actions">
           <button type="button" class="btn-secondary" id="previewPostBtn">Preview</button>
           <button type="submit" class="btn-primary" id="publishPostBtn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
-            </svg>
+            <i class="fas fa-paper-plane" aria-hidden="true"></i>
             Publish to Selected Platforms
           </button>
         </div>
@@ -485,14 +511,22 @@ class SocialManager {
       });
     }
 
-    // Platform connection/disconnection buttons
+    // Platform connection/disconnection buttons (use delegation and closest() so child element clicks work)
     document.addEventListener('click', async (e) => {
-      if (e.target.classList.contains('platform-connect-btn')) {
-        const platformId = e.target.dataset.platform;
+      const connectBtn = e.target.closest && e.target.closest('.platform-connect-btn');
+      const disconnectBtn = e.target.closest && e.target.closest('.platform-disconnect-btn');
+      const manageBtn = e.target.closest && e.target.closest('.platform-manage-btn');
+
+      if (connectBtn) {
+        const platformId = connectBtn.dataset.platform;
+        console.log('[SocialManager] Connect clicked for', platformId);
         await this.showConnectionModal(platformId);
-      } else if (e.target.classList.contains('platform-disconnect-btn')) {
-        const platformId = e.target.dataset.platform;
+      } else if (disconnectBtn) {
+        const platformId = disconnectBtn.dataset.platform;
         await this.disconnectPlatform(platformId);
+      } else if (manageBtn) {
+        const platformId = manageBtn.dataset.platform;
+        this.showPlatformManageModal(platformId);
       }
     });
   }
@@ -559,6 +593,7 @@ class SocialManager {
   async handlePostSubmission() {
     const content = document.getElementById('postContent')?.value?.trim();
     const imageFile = document.getElementById('postImage')?.files[0];
+  const imageUrl = document.getElementById('postImageUrl')?.value?.trim();
     const tags = document.getElementById('postTags')?.value
       .split(',')
       .map(tag => tag.trim())
@@ -568,8 +603,8 @@ class SocialManager {
       document.querySelectorAll('#platformCheckboxes input[type="checkbox"]:checked')
     ).map(checkbox => checkbox.value);
 
-    if (!content && !imageFile) {
-      alert('Please provide either content or an image for your post.');
+    if (!content && !imageFile && !imageUrl) {
+      alert('Please provide either content or an image (file or public URL) for your post.');
       return;
     }
 
@@ -600,6 +635,7 @@ class SocialManager {
         content,
         image: imageData,
         tags,
+        imageUrl,
         selectedPlatforms
       };
 
@@ -686,12 +722,76 @@ class SocialManager {
     alert('Platform management interface coming soon. Platforms are currently loaded via script tags.');
   }
 
+  showPlatformManageModal(platformId) {
+    const platform = this.platforms.get(platformId);
+    if (!platform) return;
+    
+    // TODO: Implement platform-specific settings modal
+    alert(`Platform management for ${platform.displayName || platformId} coming soon. This will allow you to manage account settings, posting preferences, and view analytics.`);
+  }
+
   async showConnectionModal(platformId) {
     const platform = this.platforms.get(platformId);
     if (!platform) return;
+    console.log('[SocialManager] showConnectionModal for', platformId);
 
-    // TODO: Implement platform-specific connection UI
-    alert(`Connection interface for ${platform.displayName || platformId} coming soon.`);
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.className = 'connection-modal';
+    modal.innerHTML = `
+      <div class="connection-modal-content">
+        <div class="modal-header">
+          <h2>Connect to ${platform.displayName || platformId}</h2>
+          <button class="btn-icon" id="closeConnectionModal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <div id="connectionFormContainer">
+            ${platform.getCredentialForm ? platform.getCredentialForm() : '<p>No credential form available for this platform.</p>'}
+          </div>
+          <div style="margin-top:12px; text-align:right;">
+            <button class="btn-secondary" id="cancelConnectionBtn">Cancel</button>
+            <button class="btn-primary" id="submitConnectionBtn"><i class="fas fa-plug" aria-hidden="true"></i> Connect</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close handlers
+    modal.querySelector('#closeConnectionModal')?.addEventListener('click', () => modal.remove());
+    modal.querySelector('#cancelConnectionBtn')?.addEventListener('click', () => modal.remove());
+
+    // Submit handler
+    modal.querySelector('#submitConnectionBtn')?.addEventListener('click', async () => {
+      // Collect form values
+      const inputs = modal.querySelectorAll('#connectionFormContainer input');
+      const credentials = {};
+      inputs.forEach(input => {
+        const name = input.name || input.id;
+        if (name) credentials[name] = input.value;
+      });
+
+      try {
+        // Disable button while connecting
+        const submitBtn = modal.querySelector('#submitConnectionBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+
+        const result = await this.connectPlatform(platformId, credentials);
+        if (result && result.success) {
+          alert(`Connected to ${platform.displayName || platformId} as ${result.userInfo?.username || ''}`);
+          modal.remove();
+        } else {
+          alert('Failed to connect: ' + (result?.error || 'Unknown error'));
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-plug" aria-hidden="true"></i> Connect';
+        }
+      } catch (error) {
+        alert('Connection error: ' + error.message);
+        modal.remove();
+      }
+    });
   }
 
   showPostPreview() {

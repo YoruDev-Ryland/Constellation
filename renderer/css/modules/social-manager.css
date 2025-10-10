@@ -39,10 +39,10 @@
   margin: 0;
 }
 
-/* Platform Management Grid - Similar to tools-grid */
+/* Platform Management Grid - Responsive card layout */
 .platforms-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
 }
 
@@ -50,12 +50,13 @@
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 20px;
+  padding: 24px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 16px;
   transition: all 0.3s ease;
   cursor: pointer;
+  min-height: 160px;
 }
 
 .platform-card:hover {
@@ -73,6 +74,13 @@
   border-color: var(--border-color);
 }
 
+/* Platform header with icon and basic info */
+.platform-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .platform-icon {
   width: 48px;
   height: 48px;
@@ -83,6 +91,7 @@
   justify-content: center;
   color: white;
   flex-shrink: 0;
+  font-size: 24px;
 }
 
 .platform-card.connected .platform-icon {
@@ -99,13 +108,13 @@
   font-weight: 600;
 }
 
-.platform-info {
+.platform-basic-info {
   flex: 1;
   min-width: 0;
 }
 
-.platform-info h3 {
-  font-size: 16px;
+.platform-basic-info h3 {
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 4px 0;
@@ -114,37 +123,78 @@
 .platform-status {
   font-size: 14px;
   color: var(--text-secondary);
-  margin: 0 0 8px 0;
+  margin: 0;
+  font-weight: 500;
 }
 
 .platform-card.connected .platform-status {
   color: var(--accent-green);
 }
 
+/* Platform details section */
+.platform-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .platform-description {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   line-height: 1.4;
   margin: 0;
 }
 
-.platform-actions {
-  flex-shrink: 0;
+.platform-user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
 }
 
-/* Buttons - Following the established button patterns */
+.platform-user-info .user-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Platform actions - full width buttons */
+.platform-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* Buttons - Full width, stacked design */
 .platform-connect-btn,
 .platform-disconnect-btn {
-  padding: 10px 20px;
+  width: 100%;
+  padding: 12px 20px;
   border: none;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  text-decoration: none;
 }
 
 .platform-connect-btn {
@@ -166,6 +216,29 @@
   background: #e53e3e;
   transform: translateY(-1px);
   box-shadow: var(--shadow-lg);
+}
+
+/* Secondary action buttons for connected platforms */
+.platform-manage-btn {
+  width: 100%;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.platform-manage-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 /* Posting Interface - Consistent with setup page forms */
@@ -611,12 +684,41 @@ textarea.form-control {
   
   .platforms-list {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
   .platform-card {
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
+    padding: 20px;
+    min-height: auto;
+  }
+  
+  .platform-header {
+    gap: 10px;
+  }
+  
+  .platform-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  
+  .platform-basic-info h3 {
+    font-size: 16px;
+  }
+  
+  .platform-details {
+    gap: 10px;
+  }
+  
+  .platform-actions {
+    gap: 6px;
+  }
+  
+  .platform-connect-btn,
+  .platform-disconnect-btn,
+  .platform-manage-btn {
+    padding: 10px 16px;
+    font-size: 13px;
   }
   
   .platform-checkboxes {
@@ -638,6 +740,26 @@ textarea.form-control {
   }
 }
 
+@media (max-width: 480px) {
+  .platform-card {
+    padding: 16px;
+  }
+  
+  .platform-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+  
+  .platform-icon {
+    align-self: center;
+  }
+  
+  .platform-basic-info {
+    text-align: center;
+  }
+}
+
 /* Loading Animation */
 @keyframes pulse {
   0%, 100% {
@@ -650,4 +772,39 @@ textarea.form-control {
 
 .loading {
   animation: pulse 2s infinite;
+}
+
+/* Connection Modal (overlay) */
+.connection-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.connection-modal .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.connection-modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 92%;
+  max-width: 520px;
+  padding: 20px;
+  box-shadow: var(--shadow-lg);
+}
+
+.connection-modal .modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
 }

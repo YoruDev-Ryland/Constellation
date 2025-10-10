@@ -11,6 +11,7 @@ const { URL } = require('url');
 
 const store = new Store();
 let mainWindow;
+let oauthWindow;
 
 
 function createWindow() {
@@ -1205,6 +1206,190 @@ function makeHttpsRequest(url, method = 'GET', data = null, headers = {}) {
     req.end();
   });
 }
+
+// Simple helper to parse URL fragments like #access_token=...&expires_in=...
+function parseHashFragment(fragment = '') {
+  const out = {};
+  const hash = fragment.startsWith('#') ? fragment.substring(1) : fragment;
+  for (const part of hash.split('&')) {
+    if (!part) continue;
+    const [k, v] = part.split('=');
+    out[decodeURIComponent(k)] = decodeURIComponent(v || '');
+  }
+  return out;
+}
+
+// Open a popup for Facebook Login and return access token from login_success.html
+ipcMain.handle('instagram-login', async (event, args) => {
+  try {
+    const appId = args?.appId;
+    const scopes = Array.isArray(args?.scopes) && args.scopes.length ? args.scopes : [
+      'public_profile',
+      'pages_show_list',
+      'pages_read_engagement',
+      'pages_manage_metadata',
+      'instagram_basic',
+      'instagram_manage_insights',
+      'instagram_content_publish'
+    ];
+    if (!appId) {
+      return { success: false, error: 'Missing Facebook App ID' };
+    }
+
+    const redirectUri = 'https://www.facebook.com/connect/login_success.html';
+    const state = Math.random().toString(36).slice(2);
+    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${encodeURIComponent(appId)}&response_type=token&display=popup&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(scopes.join(','))}`;
+
+    if (oauthWindow && !oauthWindow.isDestroyed()) {
+      try { oauthWindow.close(); } catch {}
+    }
+
+    oauthWindow = new BrowserWindow({
+      parent: mainWindow,
+      modal: true,
+      width: 520,
+      height: 720,
+      show: true,
+      title: 'Facebook Login',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      }
+    });
+
+    return await new Promise((resolve) => {
+      let resolved = false;
+
+      const finish = (result) => {
+        if (resolved) return;
+        resolved = true;
+        try { if (oauthWindow && !oauthWindow.isDestroyed()) oauthWindow.close(); } catch {}
+        resolve(result);
+      };
+
+      oauthWindow.on('closed', () => {
+        if (!resolved) finish({ success: false, error: 'Login window closed' });
+      });
+
+      const tryParseUrl = async (url) => {
+        try {
+          if (!url) return;
+          if (url.startsWith(redirectUri)) {
+            // Try to extract token from fragment. If fragment not present in URL string, query window.location.hash
+            let fragment = '';
+            try {
+              const u = new URL(url);
+              fragment = u.hash || '';
+            } catch {}
+            if (!fragment) {
+              try {
+                fragment = await oauthWindow.webContents.executeJavaScript('location.hash', true);
+              } catch {}
+            }
+            const params = parseHashFragment(fragment);
+            if (params.access_token) {
+              const expiresIn = Number(params.expires_in || '0');
+              finish({ success: true, accessToken: params.access_token, expiresIn, scope: params.scope || '', state: params.state || state });
+            } else if (params.error || params.error_description) {
+              finish({ success: false, error: params.error_description || params.error || 'Login failed' });
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+
+      oauthWindow.webContents.on('did-navigate', (_e, url) => tryParseUrl(url));
+      oauthWindow.webContents.on('will-redirect', (_e, url) => tryParseUrl(url));
+      oauthWindow.webContents.on('did-redirect-navigation', (_e, url) => tryParseUrl(url));
+
+      oauthWindow.loadURL(authUrl);
+    });
+  } catch (error) {
+    console.error('instagram-login failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Discover IG business accounts accessible to the user (via their Pages)
+ipcMain.handle('instagram-discover-accounts', async (_event, { accessToken }) => {
+  try {
+    if (!accessToken) return { success: false, error: 'Missing access token' };
+    // Get pages the user manages, include instagram_business_account and page access token
+    const url = `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,instagram_business_account`;
+    const resp = await makeHttpsRequest(url, 'GET', null, { Authorization: `Bearer ${accessToken}` });
+    if (!resp.success) return { success: false, error: resp.data?.error?.message || 'Failed to list pages' };
+    const pages = Array.isArray(resp.data?.data) ? resp.data.data : [];
+    const accounts = [];
+    for (const p of pages) {
+      const ig = p.instagram_business_account;
+      if (ig && ig.id) {
+        accounts.push({ pageId: p.id, pageName: p.name, pageAccessToken: p.access_token, igUserId: ig.id });
+      }
+    }
+    if (!accounts.length) return { success: false, error: 'No Instagram business accounts found. Ensure your IG account is professional and connected to a Facebook Page.' };
+    return { success: true, accounts };
+  } catch (error) {
+    console.error('instagram-discover-accounts failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Fetch IG user info like username
+ipcMain.handle('instagram-get-ig-user', async (_event, { igUserId, accessToken }) => {
+  try {
+    if (!igUserId || !accessToken) return { success: false, error: 'Missing igUserId or access token' };
+    const url = `https://graph.facebook.com/v19.0/${encodeURIComponent(igUserId)}?fields=id,username,profile_picture_url`;
+    const resp = await makeHttpsRequest(url, 'GET', null, { Authorization: `Bearer ${accessToken}` });
+    if (!resp.success) return { success: false, error: resp.data?.error?.message || 'Failed to fetch IG user' };
+    return { success: true, user: resp.data };
+  } catch (error) {
+    console.error('instagram-get-ig-user failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Publish a single image: create container then publish
+ipcMain.handle('instagram-publish-image', async (_event, { igUserId, accessToken, imageUrl, caption }) => {
+  try {
+    if (!igUserId || !accessToken || !imageUrl) return { success: false, error: 'Missing required parameters' };
+    // Create media container
+    const createUrl = `https://graph.facebook.com/v19.0/${encodeURIComponent(igUserId)}/media`;
+    const cResp = await makeHttpsRequest(createUrl, 'POST', { image_url: imageUrl, caption: caption || '' }, { Authorization: `Bearer ${accessToken}` });
+    if (!cResp.success || !cResp.data?.id) {
+      return { success: false, error: cResp.data?.error?.message || 'Failed to create media container' };
+    }
+    const containerId = cResp.data.id;
+
+    // Optional: poll status for up to ~5 mins (we'll do a short quick poll here)
+    const statusUrl = `https://graph.facebook.com/v19.0/${encodeURIComponent(containerId)}?fields=status_code`;
+    let status = 'IN_PROGRESS';
+    const start = Date.now();
+    while (Date.now() - start < 60_000) { // up to 60s
+      const sResp = await makeHttpsRequest(statusUrl, 'GET', null, { Authorization: `Bearer ${accessToken}` });
+      if (sResp.success && sResp.data?.status_code) {
+        status = sResp.data.status_code;
+        if (status === 'FINISHED' || status === 'PUBLISHED') break;
+        if (status === 'ERROR' || status === 'EXPIRED') break;
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    if (status === 'ERROR' || status === 'EXPIRED') {
+      return { success: false, error: `Container status ${status}` };
+    }
+
+    // Publish container
+    const publishUrl = `https://graph.facebook.com/v19.0/${encodeURIComponent(igUserId)}/media_publish`;
+    const pResp = await makeHttpsRequest(publishUrl, 'POST', { creation_id: containerId }, { Authorization: `Bearer ${accessToken}` });
+    if (!pResp.success || !pResp.data?.id) {
+      return { success: false, error: pResp.data?.error?.message || 'Failed to publish media' };
+    }
+    return { success: true, mediaId: pResp.data.id };
+  } catch (error) {
+    console.error('instagram-publish-image failed:', error);
+    return { success: false, error: error.message };
+  }
+});
 
 function generateStableDeviceId() {
   try {

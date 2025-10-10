@@ -41,4 +41,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   analyzeFitsStars: (filePath, options) => ipcRenderer.invoke('analyze-fits-stars', filePath, options),
   createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath),
   copyFile: (sourcePath, destPath) => ipcRenderer.invoke('copy-file', sourcePath, destPath)
+  ,
+  // Instagram/Meta Graph integrations
+  instagramLogin: (args) => ipcRenderer.invoke('instagram-login', args),
+  instagramDiscoverAccounts: (args) => ipcRenderer.invoke('instagram-discover-accounts', args),
+  instagramGetIgUser: (args) => ipcRenderer.invoke('instagram-get-ig-user', args),
+  instagramPublishImage: (args) => ipcRenderer.invoke('instagram-publish-image', args)
 });
