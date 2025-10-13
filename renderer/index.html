@@ -166,6 +166,14 @@
           </div>
         </header>
 
+        <!-- Projects Toolbar -->
+        <div class="projects-toolbar">
+          <button class="btn-primary" id="analyzeAstroBtn">
+            <i class="fas fa-microscope"></i>
+            Analyze with AstroQC
+          </button>
+        </div>
+
         <div class="tab-content active" id="currentProjects">
           <div class="projects-grid" id="currentProjectsGrid">
             <div class="empty-state">
@@ -210,12 +218,9 @@
               </svg>
               Complete
             </button>
-            <button class="btn-danger" id="deleteProjectBtn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path
-                  d="M3 6h18M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2m3 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6h14zM10 11v6M14 11v6" />
-              </svg>
-              Delete
+            <button class="btn-secondary" id="analyzeProjectBtn">
+              <i class="fas fa-microscope"></i>
+              AstroQC
             </button>
           </div>
         </header>
@@ -445,6 +450,9 @@
 
   <!-- Tool registry for dynamic tool loading -->
   <script src="js/modules/tool-registry.js"></script>
+
+  <!-- AstroQC Integration -->
+  <script src="js/modules/astroqc-integration.js"></script>
 
   <!-- Feature modules -->
   <script src="js/modules/hr-diagram.js"></script>

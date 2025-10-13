@@ -806,9 +806,9 @@ ipcMain.handle('select-folder', async (event, options) => {
 });
 
 // Launch external program
-ipcMain.handle('launch-program', async (event, programPath) => {
+ipcMain.handle('launch-program', async (event, programPath, args = []) => {
   try {
-    console.log('[launch-program] Attempting to launch:', programPath);
+    console.log('[launch-program] Attempting to launch:', programPath, 'with args:', args);
     
     if (!programPath) {
       return { success: false, error: 'No program path provided' };
@@ -821,7 +821,7 @@ ipcMain.handle('launch-program', async (event, programPath) => {
     const { spawn } = require('child_process');
     
     // Launch the program detached so it runs independently
-    const child = spawn(programPath, [], {
+    const child = spawn(programPath, args, {
       detached: true,
       stdio: 'ignore'
     });
@@ -829,7 +829,7 @@ ipcMain.handle('launch-program', async (event, programPath) => {
     // Unreference so parent can exit
     child.unref();
     
-    console.log('[launch-program] Successfully launched:', programPath);
+    console.log('[launch-program] Successfully launched:', programPath, 'with args:', args);
     return { success: true };
     
   } catch (error) {

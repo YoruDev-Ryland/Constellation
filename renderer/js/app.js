@@ -244,6 +244,19 @@ async function init() {
     await toolRegistry.init();
     window.toolRegistry = toolRegistry;
   }
+
+  // Initialize AstroQC integration
+  if (window.astroQCIntegration) {
+    // Create a simple settings manager interface for AstroQC
+    const simpleSettingsManager = {
+      loadSettings: async () => settings,
+      saveSettings: async (newSettings) => {
+        settings = { ...settings, ...newSettings };
+        await window.electronAPI.saveSettings(settings);
+      }
+    };
+    await window.astroQCIntegration.initialize(simpleSettingsManager);
+  }
   
   try {
     const db = await window.electronAPI.getLibraryDatabase?.();
@@ -343,8 +356,31 @@ function setupEventListeners() {
   document.getElementById('backToProjectsBtn')?.addEventListener('click', () => switchView('projectsView'));
   document.getElementById('editProjectBtn')?.addEventListener('click', editProject);
   document.getElementById('completeProjectBtn')?.addEventListener('click', toggleProjectCompletion);
-  document.getElementById('deleteProjectBtn')?.addEventListener('click', () => { if (currentProject) { const modal = ensureProjectUI().createDeleteProjectModal(currentProject); document.body.appendChild(modal); } });
+  document.getElementById('analyzeProjectBtn')?.addEventListener('click', analyzeCurrentProject);
   document.getElementById('debugChartBtn')?.addEventListener('click', () => ensureAcquisitionCharts().debug(currentProject));
+
+  // AstroQC Integration - Astro directory analysis
+  document.getElementById('analyzeAstroBtn')?.addEventListener('click', analyzeAstroDirectory);
+
+  // Event delegation for dynamically created filter AQC buttons
+  document.addEventListener('click', async (e) => {
+    if (e.target.matches('.astroqc-filter-btn') || e.target.closest('.astroqc-filter-btn')) {
+      const btn = e.target.matches('.astroqc-filter-btn') ? e.target : e.target.closest('.astroqc-filter-btn');
+      const filter = btn.dataset.filter;
+      const projectPath = btn.dataset.projectPath;
+      
+      if (filter && projectPath) {
+        try {
+          // Construct the filter path (assuming standard structure: projectPath/filter/)
+          const filterPath = `${projectPath}/${filter}`;
+          await window.astroQCIntegration.launchFilterAnalysis(filterPath);
+        } catch (error) {
+          console.error('Failed to launch AstroQC filter analysis:', error);
+          await window.showAlert('AstroQC Error', `Failed to launch AstroQC: ${error.message}`, 'error');
+        }
+      }
+    }
+  });
 
   // Log modal controls
   document.getElementById('closeLogBtn')?.addEventListener('click', closeVerboseLogModal);
@@ -515,6 +551,31 @@ function renderCalendar() { window.ensureCalendarModule().render(); }
 async function renderCleanup() { ensureCleanupManager().render(); }
 
 // Legacy project UI helpers removed (now in ProjectUI module)
+
+// AstroQC Integration Functions
+async function analyzeAstroDirectory() {
+  try {
+    await window.astroQCIntegration.launchAstroAnalysis(settings.astroDirectory);
+  } catch (error) {
+    console.error('Failed to launch AstroQC astro analysis:', error);
+    await window.showAlert('AstroQC Error', `Failed to launch AstroQC: ${error.message}`, 'error');
+  }
+}
+
+async function analyzeCurrentProject() {
+  if (!currentProject) {
+    await window.showAlert('No Project Selected', 'Please select a project to analyze.', 'warning');
+    return;
+  }
+  
+  try {
+    const projectPath = currentProject.path || currentProject.name;
+    await window.astroQCIntegration.launchProjectAnalysis(projectPath);
+  } catch (error) {
+    console.error('Failed to launch AstroQC project analysis:', error);
+    await window.showAlert('AstroQC Error', `Failed to launch AstroQC: ${error.message}`, 'error');
+  }
+}
 
 // Execute the actual deletion
 async function executeProjectDeletion(deleteFiles, shouldBlacklist) {

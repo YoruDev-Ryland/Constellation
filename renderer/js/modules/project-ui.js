@@ -252,6 +252,12 @@ class ProjectUI {
             <div>${data.count} images</div>
             <div>${(data.time / 3600).toFixed(1)}h</div>
           </div>
+          <div class="filter-actions">
+            <button class="btn-secondary astroqc-filter-btn" data-filter="${filter}" data-project-path="${project.path || project.name}">
+              <i class="fas fa-microscope"></i>
+              AQC
+            </button>
+          </div>
         </div>`).join('');
     }
 
