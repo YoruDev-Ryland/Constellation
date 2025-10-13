@@ -40,7 +40,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scanFitsFolder: (folderPath) => ipcRenderer.invoke('scan-fits-folder', folderPath),
   analyzeFitsStars: (filePath, options) => ipcRenderer.invoke('analyze-fits-stars', filePath, options),
   createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath),
-  copyFile: (sourcePath, destPath) => ipcRenderer.invoke('copy-file', sourcePath, destPath)
+  copyFile: (sourcePath, destPath) => ipcRenderer.invoke('copy-file', sourcePath, destPath),
+  launchProgram: (programPath) => ipcRenderer.invoke('launch-program', programPath)
   ,
   // Instagram/Meta Graph integrations
   instagramLogin: (args) => ipcRenderer.invoke('instagram-login', args),

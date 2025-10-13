@@ -618,47 +618,48 @@ function updateBackgroundScanSettings(enabled, frequencyHours) {
 }
 
 // Sub-Frame Analyzer Integration
-async function openSubFrameAnalyzer() {
-  console.log('Opening Sub-Frame Analyzer');
+async function launchAstroQC() {
+  console.log('Launching AstroQC Sub-Frame Analyzer');
   
   try {
-    // Load the HTML module content if not already loaded
-    const subAnalyzerView = document.getElementById('subAnalyzerView');
-    if (subAnalyzerView && subAnalyzerView.innerHTML.trim() === '<!-- Content will be loaded from modules/sub-analyzer-view.html -->') {
-      console.log('Loading Sub-Frame Analyzer module content...');
-      
-      try {
-        const response = await fetch('js/modules/sub-analyzer-view.html');
-        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        const htmlContent = await response.text();
-        subAnalyzerView.innerHTML = htmlContent;
-        console.log('Sub-Frame Analyzer HTML module loaded successfully');
-      } catch (error) {
-        console.error('Failed to load Sub-Frame Analyzer module:', error);
-        throw new Error('Failed to load Sub-Frame Analyzer module: ' + error.message);
+    // Get current settings to check for AstroQC path
+    const settings = await window.electronAPI.getSettings();
+    
+    if (!settings.thirdPartyPrograms?.astroQC) {
+      // Show modal asking user to set path in settings
+      if (window.showAlert) {
+        window.showAlert(
+          'AstroQC Not Configured', 
+          'Please set the path to AstroQC in Settings > Third Party Program Support before using this tool.',
+          'warning'
+        );
+      } else {
+        alert('Please set the path to AstroQC in Settings > Third Party Program Support before using this tool.');
       }
+      return;
+    }
+
+    // Launch AstroQC
+    const result = await window.electronAPI.launchProgram(settings.thirdPartyPrograms.astroQC);
+    
+    if (!result.success) {
+      console.error('Failed to launch AstroQC:', result.error);
+      if (window.showAlert) {
+        window.showAlert('Launch Failed', `Failed to launch AstroQC: ${result.error}`, 'error');
+      } else {
+        alert(`Failed to launch AstroQC: ${result.error}`);
+      }
+    } else {
+      console.log('AstroQC launched successfully');
     }
     
-    // Show the sub-analyzer view
-    switchView('subAnalyzer');
-    
-    // Initialize the analyzer if not already done
-    if (!window.subFrameAnalyzer) {
-      // Give the DOM a moment to update before initializing
-      setTimeout(() => {
-        if (typeof initSubFrameAnalyzer === 'function') {
-          window.subFrameAnalyzer = initSubFrameAnalyzer();
-          console.log('Sub-Frame Analyzer initialized successfully');
-        } else {
-          console.error('initSubFrameAnalyzer function not found');
-        }
-      }, 100);
-    }
-    
-    console.log('Sub-Frame Analyzer view opened successfully');
   } catch (error) {
-    console.error('Error opening Sub-Frame Analyzer:', error);
-    alert('Error opening Sub-Frame Analyzer: ' + error.message);
+    console.error('Error launching AstroQC:', error);
+    if (window.showAlert) {
+      window.showAlert('Error', 'An error occurred while trying to launch AstroQC.', 'error');
+    } else {
+      alert('An error occurred while trying to launch AstroQC.');
+    }
   }
 }
 
@@ -772,7 +773,7 @@ function initializeToolsView() {
     newSubAnalyzerButton.addEventListener('click', (e) => {
       e.preventDefault();
       console.log('Sub-Frame Analyzer button clicked');
-      openSubFrameAnalyzer();
+      launchAstroQC();
     });
     
     console.log('Sub-Frame Analyzer button listener added');

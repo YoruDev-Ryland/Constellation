@@ -15,6 +15,9 @@ let observatoryLocation = {
   longitude: null,
   elevation: null
 };
+let thirdPartyPrograms = {
+  astroQC: ''
+};
 
 // DOM elements - will be initialized when setupModalInit is called
 let storageInput, selectStorageBtn, cleanupInput, addCleanupBtn, cleanupTagsContainer;
@@ -22,6 +25,7 @@ let ignoreInput, addIgnoreBtn, ignoreTagsContainer, licenseKeyInput, activateLic
 let deactivateLicenseBtn, licenseStatus, licenseActions, enableBackgroundScanCheckbox;
 let backgroundScanHoursSelect, backgroundFrequencyGroup, completeSetupBtn;
 let observatoryNameInput, latitudeInput, longitudeInput, elevationInput;
+let astroQCPathInput, browseAstroQCBtn, testAstroQCBtn;
 
 // Initialize setup modal - call this when the modal content is loaded
 window.setupModalInit = function setupModalInit() {
@@ -47,6 +51,9 @@ window.setupModalInit = function setupModalInit() {
   latitudeInput = document.getElementById('latitude');
   longitudeInput = document.getElementById('longitude');
   elevationInput = document.getElementById('elevation');
+  astroQCPathInput = document.getElementById('astroQCPath');
+  browseAstroQCBtn = document.getElementById('browseAstroQCBtn');
+  testAstroQCBtn = document.getElementById('testAstroQCBtn');
 
   // Add event listeners only if elements exist
   if (selectStorageBtn) {
@@ -130,6 +137,15 @@ window.setupModalInit = function setupModalInit() {
       applyObservatoryPreset(preset);
     });
   });
+
+  // Add event listeners for third-party programs
+  if (browseAstroQCBtn) {
+    browseAstroQCBtn.addEventListener('click', browseAstroQC);
+  }
+
+  if (testAstroQCBtn) {
+    testAstroQCBtn.addEventListener('click', testAstroQC);
+  }
 
   // Initialize the setup form
   if (typeof window.initializeSetupForm === 'function') {
@@ -431,6 +447,14 @@ async function loadExistingSettings() {
       backgroundScanHours = settings.backgroundScanHours;
       backgroundScanHoursSelect.value = backgroundScanHours;
     }
+    // Load third-party program paths
+    if (settings.thirdPartyPrograms) {
+      thirdPartyPrograms = settings.thirdPartyPrograms;
+      if (astroQCPathInput) astroQCPathInput.value = thirdPartyPrograms.astroQC || '';
+      updateTestAstroQCButton();
+    }
+
+    // Load other settings
     if (settings.observatoryLocation) {
       observatoryLocation = settings.observatoryLocation;
       if (observatoryNameInput) observatoryNameInput.value = observatoryLocation.name || '';
@@ -467,6 +491,7 @@ async function completeSetup() {
       enableBackgroundScan,
       backgroundScanHours,
       observatoryLocation,
+      thirdPartyPrograms,
       setupCompleted: true
     };
 
@@ -510,6 +535,63 @@ ignoreFolders = [
     document.head.appendChild(script);
   }
 })();
+
+// Third-party program functions
+async function browseAstroQC() {
+  try {
+    const filePath = await window.electronAPI.selectFile({
+      title: 'Select AstroQC Executable',
+      filters: [
+        { name: 'Executable Files', extensions: ['exe', 'app', 'deb', 'AppImage'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+    
+    if (filePath) {
+      thirdPartyPrograms.astroQC = filePath;
+      if (astroQCPathInput) astroQCPathInput.value = filePath;
+      updateTestAstroQCButton();
+    }
+  } catch (error) {
+    console.error('Error selecting AstroQC path:', error);
+    if (window.showAlert) {
+      window.showAlert('Error', 'Failed to select file path.', 'error');
+    }
+  }
+}
+
+async function testAstroQC() {
+  if (!thirdPartyPrograms.astroQC) {
+    if (window.showAlert) {
+      window.showAlert('Error', 'Please select the AstroQC executable path first.', 'error');
+    }
+    return;
+  }
+
+  try {
+    const result = await window.electronAPI.launchProgram(thirdPartyPrograms.astroQC);
+    if (result.success) {
+      if (window.showAlert) {
+        window.showAlert('Success', 'AstroQC launched successfully!', 'success');
+      }
+    } else {
+      if (window.showAlert) {
+        window.showAlert('Error', `Failed to launch AstroQC: ${result.error}`, 'error');
+      }
+    }
+  } catch (error) {
+    console.error('Error testing AstroQC:', error);
+    if (window.showAlert) {
+      window.showAlert('Error', 'Failed to test AstroQC launch.', 'error');
+    }
+  }
+}
+
+function updateTestAstroQCButton() {
+  if (testAstroQCBtn) {
+    testAstroQCBtn.disabled = !thirdPartyPrograms.astroQC;
+  }
+}
 
   // Auto-initialize when this script is loaded on the standalone setup page
   if (document.body && document.body.classList.contains('setup-page')) {

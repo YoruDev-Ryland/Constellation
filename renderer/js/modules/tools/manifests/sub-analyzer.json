@@ -1,9 +1,10 @@
 {
   "id": "sub-analyzer",
   "name": "Sub-Frame Quality Analyzer",
-  "description": "Automatically analyze thousands of sub-frames to identify good and bad exposures based on FWHM and noise.",
+  "description": "Launch AstroQC external program to analyze thousands of sub-frames for quality assessment.",
   "icon": "fas fa-microscope",
   "buttonId": "subAnalyzerBtn",
   "enabled": true,
-  "order": 2
+  "order": 2,
+  "externalProgram": "astroQC"
 }

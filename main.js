@@ -805,6 +805,39 @@ ipcMain.handle('select-folder', async (event, options) => {
   }
 });
 
+// Launch external program
+ipcMain.handle('launch-program', async (event, programPath) => {
+  try {
+    console.log('[launch-program] Attempting to launch:', programPath);
+    
+    if (!programPath) {
+      return { success: false, error: 'No program path provided' };
+    }
+
+    if (!fs.existsSync(programPath)) {
+      return { success: false, error: 'Program file not found' };
+    }
+
+    const { spawn } = require('child_process');
+    
+    // Launch the program detached so it runs independently
+    const child = spawn(programPath, [], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    
+    // Unreference so parent can exit
+    child.unref();
+    
+    console.log('[launch-program] Successfully launched:', programPath);
+    return { success: true };
+    
+  } catch (error) {
+    console.error('[launch-program] Error launching program:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Scan a folder directly for FITS files (for Sub-Frame Analyzer)
 ipcMain.handle('scan-fits-folder', async (event, folderPath) => {
   try {
