@@ -1,37 +1,38 @@
 /**
- * H-R Diagram UI for LRGB filter workflow
+ * H-R Diagram Tool for LRGB filter workflow
+ * Renders in main window instead of modal
  */
-class HRDiagramUI {
-  constructor() {
+class HRDiagram {
+  constructor(containerId, options = {}) {
+    this.containerId = containerId;
+    this.container = document.getElementById(containerId);
     this.selectedFiles = {
       l: null,
       r: null,
       g: null,
       b: null
     };
+    
+    this.init();
+  }
+
+  init() {
+    if (!this.container) {
+      console.error('HR Diagram container not found:', this.containerId);
+      return;
+    }
+    
+    this.createUI();
+    this.setupEventListeners();
   }
 
   /**
-   * Create and show the simplified H-R diagram modal interface
+   * Create the H-R diagram interface in the main window
    */
-  createModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="hr-diagram-modal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h2>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
-              </svg>
-              H-R Diagram Generator
-            </h2>
-            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
-          </div>
-          
-          <div class="modal-body">
+  createUI() {
+    this.container.innerHTML = `
+      <div class="hr-diagram-container">
+        <div class="hr-diagram-content">
             <div class="info-note">
               <strong>H-R Diagram Requirements:</strong><br>
               H-R diagrams require separate filter observations to calculate color indices:<br>
@@ -87,28 +88,20 @@ class HRDiagramUI {
               <p><strong>Note:</strong> The B-G color index approximates the traditional B-V used in professional astronomy.</p>
             </div>
             
-            <div class="modal-actions">
-              <button id="process-filters" class="btn btn-primary" disabled>
+            <div class="hr-actions">
+              <button id="process-filters" class="btn-primary" disabled>
                 Process Filter Images
               </button>
-              <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
-                Cancel
-              </button>
             </div>
-          </div>
         </div>
       </div>
     `;
-
-    document.body.appendChild(modal);
-    this.initializeEventListeners();
-    return modal;
   }
 
   /**
-   * Initialize event listeners for the simplified interface
+   * Setup event listeners for the interface
    */
-  initializeEventListeners() {
+  setupEventListeners() {
     // Filter selection event listeners
     const filterInputs = ['l-filter', 'r-filter', 'g-filter', 'b-filter'];
     filterInputs.forEach(id => {
@@ -174,4 +167,4 @@ class HRDiagramUI {
 }
 
 // Export for use
-window.HRDiagramUI = HRDiagramUI;
+window.HRDiagram = HRDiagram;

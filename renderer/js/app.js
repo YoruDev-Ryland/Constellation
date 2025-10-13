@@ -770,35 +770,28 @@ async function openAltitudeTimeline() {
 
 // H-R Diagram Integration
 function createHRDiagram() {
-  console.log('Creating H-R Diagram interface');
+  console.log('Opening H-R Diagram view');
   
-  // Debug: Check if modules are available
-  console.log('HRDiagramUI available:', typeof HRDiagramUI !== 'undefined');
-  console.log('Chart available:', typeof Chart !== 'undefined');
+  // Switch to HR diagram view
+  switchView('hrDiagramView');
   
-  if (typeof HRDiagramUI === 'undefined') {
-    console.error('H-R Diagram UI module not loaded');
-    alert('H-R Diagram functionality is not available. Please check console for errors.');
-    return;
-  }
-  
-  try {
-    const hrUI = new HRDiagramUI();
-    console.log('HRDiagramUI instance created:', hrUI);
+  // Initialize HR diagram tool if not already initialized
+  if (!window.hrDiagramInstance) {
+    console.log('HRDiagram available:', typeof HRDiagram !== 'undefined');
     
-    const modal = hrUI.createModal();
-    console.log('Modal created:', modal);
-    
-    if (!modal) {
-      console.error('Modal creation returned null/undefined');
-      alert('Failed to create H-R diagram interface');
+    if (typeof HRDiagram === 'undefined') {
+      console.error('H-R Diagram module not loaded');
+      window.showAlert('Module Error', 'H-R Diagram functionality is not available. Please check console for errors.', 'error');
       return;
     }
     
-    console.log('H-R Diagram modal should now be visible');
-  } catch (error) {
-    console.error('Error creating H-R diagram:', error);
-    alert('Error creating H-R diagram: ' + error.message);
+    try {
+      window.hrDiagramInstance = new HRDiagram('hrDiagramContainer');
+      console.log('H-R Diagram initialized in main window');
+    } catch (error) {
+      console.error('Error initializing H-R diagram:', error);
+      window.showAlert('Initialization Error', `Error initializing H-R diagram: ${error.message}`, 'error');
+    }
   }
 }
 
@@ -869,6 +862,17 @@ function initializeToolsView() {
       switchView('tools');
     });
     console.log('Back to Tools button listener added');
+  }
+
+  // HR Diagram back button
+  const backToToolsFromHRBtn = document.getElementById('backToToolsFromHRBtn');
+  if (backToToolsFromHRBtn) {
+    backToToolsFromHRBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Back to Tools from HR Diagram button clicked');
+      switchView('tools');
+    });
+    console.log('Back to Tools from HR Diagram button listener added');
   }
 }
 

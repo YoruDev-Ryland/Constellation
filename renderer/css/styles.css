@@ -2433,6 +2433,130 @@ body.setup-page {
   background: rgba(15, 23, 42, 0.5);
 }
 
+/* H-R Diagram Main Window Styles */
+.hr-diagram-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.hr-diagram-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.hr-diagram-container .info-note {
+  background: rgba(101, 163, 13, 0.1);
+  border: 1px solid rgba(101, 163, 13, 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.hr-diagram-container .filter-selection {
+  margin-bottom: 24px;
+}
+
+.hr-diagram-container .filter-selection h4 {
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.hr-diagram-container .filter-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.hr-diagram-container .filter-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hr-diagram-container .filter-input label {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.hr-diagram-container .filter-input input[type="file"] {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.hr-diagram-container .color-index-selection {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hr-diagram-container .color-index-selection label {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.hr-diagram-container .color-index-selection select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  max-width: 300px;
+}
+
+.hr-diagram-container .proper-workflow {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 24px;
+}
+
+.hr-diagram-container .proper-workflow h4 {
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.hr-diagram-container .proper-workflow ol {
+  margin-left: 20px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.hr-diagram-container .proper-workflow li {
+  margin-bottom: 8px;
+}
+
+.hr-diagram-container .proper-workflow strong {
+  color: var(--text-primary);
+}
+
+.hr-diagram-container .hr-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .hr-diagram-modal .modal-content {

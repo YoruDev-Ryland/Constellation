@@ -358,6 +358,29 @@
         </div>
       </div>
 
+      <!-- H-R Diagram View -->
+      <div class="view" id="hrDiagramView">
+        <header class="content-header">
+          <div class="header-back">
+            <button class="btn-icon" id="backToToolsFromHRBtn" title="Back to Tools">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div>
+              <h1>H-R Diagram Generator</h1>
+              <p class="header-subtitle">Generate Hertzsprung-Russell diagrams from stellar field observations</p>
+            </div>
+          </div>
+        </header>
+        
+        <div class="tool-content-wrapper">
+          <div id="hrDiagramContainer">
+            <!-- H-R diagram interface will be rendered here -->
+          </div>
+        </div>
+      </div>
+
       <!-- Cleanup View -->
       <div class="view" id="cleanupView">
         <header class="content-header">
@@ -455,8 +478,7 @@
   <script src="js/modules/astroqc-integration.js"></script>
 
   <!-- Feature modules -->
-  <script src="js/modules/hr-diagram.js"></script>
-  <script src="js/modules/hr-diagram-ui.js"></script>
+  <script src="js/modules/tools/hr-diagram.js"></script>
   <script src="js/modules/tools/altitude-timeline.js"></script>
   
   <!-- Social Media modules -->
