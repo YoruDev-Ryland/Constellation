@@ -1,810 +1,207 @@
-/* Social Media Manager Styles */
-/* Redesigned to match the established UI patterns in Constellation */
+/* Social Manager Styles - Internal Social System */
+/* Styles for the integrated astronomy community platform */
 
-/* Main Social View Layout */
-.social-main-container {
-  display: grid;
-  gap: 32px;
+.social-container {
+  padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-/* Social Sections - Following the established card pattern */
-.social-section {
+.social-content {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 24px;
-  transition: all 0.3s ease;
+  overflow: hidden;
 }
 
-.social-section:hover {
-  border-color: var(--accent-purple);
-  box-shadow: var(--shadow);
+.social-placeholder {
+  padding: 60px 40px;
+  text-align: center;
+  color: var(--text-primary);
 }
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.placeholder-icon {
   margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
 }
 
-.section-header h2 {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-/* Platform Management Grid - Responsive card layout */
-.platforms-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-.platform-card {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  min-height: 160px;
-}
-
-.platform-card:hover {
-  border-color: var(--accent-blue);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-}
-
-.platform-card.connected {
-  border-color: var(--accent-green);
-  background: rgba(72, 187, 120, 0.1);
-}
-
-.platform-card.disconnected {
-  border-color: var(--border-color);
-}
-
-/* Platform header with icon and basic info */
-.platform-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.platform-icon {
-  width: 48px;
-  height: 48px;
-  background: var(--accent-blue);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-  font-size: 24px;
-}
-
-.platform-card.connected .platform-icon {
-  background: var(--accent-green);
-}
-
-.platform-icon svg {
-  width: 24px;
-  height: 24px;
-}
-
-.platform-icon-text {
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.platform-basic-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.platform-basic-info h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 4px 0;
-}
-
-.platform-status {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0;
-  font-weight: 500;
-}
-
-.platform-card.connected .platform-status {
-  color: var(--accent-green);
-}
-
-/* Platform details section */
-.platform-details {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.platform-description {
-  font-size: 13px;
-  color: var(--text-muted);
-  line-height: 1.4;
-  margin: 0;
-}
-
-.platform-user-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-}
-
-.platform-user-info .user-avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--accent-blue);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-/* Platform actions - full width buttons */
-.platform-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: auto;
-}
-
-/* Buttons - Full width, stacked design */
-.platform-connect-btn,
-.platform-disconnect-btn {
-  width: 100%;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  text-decoration: none;
-}
-
-.platform-connect-btn {
-  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
-  color: white;
-}
-
-.platform-connect-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-lg);
-}
-
-.platform-disconnect-btn {
-  background: var(--accent-red);
-  color: white;
-}
-
-.platform-disconnect-btn:hover {
-  background: #e53e3e;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* Secondary action buttons for connected platforms */
-.platform-manage-btn {
-  width: 100%;
-  padding: 8px 16px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.platform-manage-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-/* Posting Interface - Consistent with setup page forms */
-.posting-interface {
-  max-width: 100%;
-}
-
-.post-form {
-  display: grid;
-  gap: 24px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-group label {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.form-control {
-  padding: 12px 16px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 14px;
-  transition: border-color 0.2s;
-  font-family: inherit;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--accent-purple);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-control::placeholder {
-  color: var(--text-muted);
-}
-
-textarea.form-control {
-  resize: vertical;
-  min-height: 120px;
-  line-height: 1.5;
-}
-
-.character-count {
-  text-align: right;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.character-count.warning {
-  color: #f59e0b;
-}
-
-.character-count.error {
-  color: var(--accent-red);
-}
-
-.form-hint {
-  font-size: 13px;
-  color: var(--text-muted);
-  line-height: 1.4;
-}
-
-/* Image Upload - Following the established design */
-.image-upload-area {
-  border: 2px dashed var(--border-color);
-  border-radius: 8px;
-  padding: 32px;
-  text-align: center;
-  transition: all 0.2s;
-  cursor: pointer;
-  background: var(--bg-primary);
-}
-
-.image-upload-area:hover {
-  border-color: var(--accent-purple);
-  background: var(--bg-tertiary);
-}
-
-.upload-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  color: var(--text-secondary);
-}
-
-.upload-placeholder svg {
-  opacity: 0.6;
-}
-
-.upload-placeholder p {
-  margin: 0;
-  font-size: 14px;
-}
-
-.image-preview {
-  position: relative;
-  display: inline-block;
-  max-width: 100%;
-}
-
-.image-preview img {
-  max-width: 100%;
-  max-height: 200px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.remove-image {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 32px;
-  height: 32px;
-  background: rgba(0, 0, 0, 0.7);
-  border: none;
-  border-radius: 50%;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-
-.remove-image:hover {
-  background: var(--accent-red);
-}
-
-/* Platform Selection - Grid layout like features */
-.platform-checkboxes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.platform-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.platform-checkbox:hover {
-  border-color: var(--accent-purple);
-  background: var(--bg-hover);
-}
-
-.platform-checkbox input[type="checkbox"] {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--border-color);
-  border-radius: 4px;
-  background: var(--bg-primary);
-  cursor: pointer;
-  position: relative;
-  transition: all 0.2s;
-}
-
-.platform-checkbox input[type="checkbox"]:checked {
-  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
-  border-color: var(--accent-purple);
-}
-
-.platform-checkbox input[type="checkbox"]:checked::after {
-  content: '✓';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.checkbox-label svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* Form Actions - Following the established pattern */
-.form-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding-top: 24px;
-  border-top: 1px solid var(--border-color);
-}
-
-.form-actions button {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-#previewPostBtn {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-
-#previewPostBtn:hover {
-  background: var(--bg-hover);
-}
-
-#publishPostBtn {
-  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
-  color: white;
-}
-
-#publishPostBtn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-lg);
-}
-
-#publishPostBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Empty States - Following the established pattern */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 48px;
-  text-align: center;
-  color: var(--text-secondary);
-}
-
-.empty-state svg {
-  opacity: 0.5;
-  stroke: var(--text-muted);
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.5;
-}
-
-/* Post Preview Styles - Using existing modal patterns */
-.post-preview {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 16px;
-  margin: 16px 0;
-}
-
-.preview-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.platform-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.platform-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.preview-content {
-  color: var(--text-primary);
-  line-height: 1.5;
-}
-
-.preview-text {
-  margin-top: 12px;
-  white-space: pre-wrap;
-}
-
-.preview-image {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 12px;
-  text-align: center;
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-}
-
-/* Twitter specific preview */
-.twitter-preview .tweet-author {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.author-avatar {
-  width: 40px;
-  height: 40px;
-  background: var(--accent-blue);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
-
-.author-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.author-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.author-handle {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.tweet-actions {
-  display: flex;
-  gap: 24px;
-  margin-top: 12px;
-  font-size: 14px;
+.placeholder-icon i {
+  font-size: 4rem;
+  color: var(--accent-purple);
   opacity: 0.7;
 }
 
-/* Reddit specific preview */
-.reddit-preview .reddit-post {
-  display: flex;
-  gap: 12px;
+.social-placeholder h2 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text-primary);
 }
 
-.vote-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  color: var(--text-muted);
-}
-
-.vote-arrow {
-  cursor: pointer;
-  transition: color 0.2s;
+.social-placeholder p {
   font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.6;
 }
 
-.vote-count {
-  font-size: 12px;
+.feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 32px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  text-align: left;
+}
+
+.feature-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.feature-list li:hover {
+  background: var(--bg-hover);
+  transform: translateY(-2px);
+}
+
+.feature-list li i {
+  color: var(--accent-purple);
+  width: 20px;
+  text-align: center;
+}
+
+.coming-soon {
+  font-style: italic;
+  color: var(--text-muted);
+  margin-top: 32px;
+  padding: 20px;
+  background: rgba(102, 126, 234, 0.1);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Future styles for social system components */
+.social-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+}
+
+.social-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.social-nav-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.social-nav-btn:hover,
+.social-nav-btn.active {
+  background: var(--accent-purple);
+  color: white;
+  border-color: var(--accent-purple);
+}
+
+.social-feed {
+  padding: 24px;
+}
+
+.post-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
   font-weight: 600;
 }
 
 .post-content {
-  flex: 1;
-}
-
-.post-title {
-  font-size: 16px;
-  font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 8px;
-  line-height: 1.4;
-}
-
-.post-meta {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
+  line-height: 1.6;
+  margin-bottom: 16px;
 }
 
 .post-actions {
   display: flex;
   gap: 16px;
-  font-size: 12px;
   color: var(--text-secondary);
-  margin-top: 12px;
+  font-size: 14px;
 }
 
-.post-actions span {
+.post-action {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
 }
 
-.post-actions span:hover {
-  color: var(--accent-blue);
+.post-action:hover {
+  color: var(--accent-purple);
 }
 
-/* Platform Icons */
-.twitter-icon {
-  color: #1da1f2;
-}
-
-.reddit-icon {
-  color: #ff4500;
-}
-
-/* Responsive Design */
+/* Responsive design */
 @media (max-width: 768px) {
-  .social-main-container {
-    gap: 24px;
+  .social-container {
+    padding: 16px;
   }
   
-  .platforms-list {
-    grid-template-columns: 1fr;
-    gap: 16px;
+  .social-placeholder {
+    padding: 40px 20px;
   }
   
-  .platform-card {
-    padding: 20px;
-    min-height: auto;
-  }
-  
-  .platform-header {
-    gap: 10px;
-  }
-  
-  .platform-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
-  }
-  
-  .platform-basic-info h3 {
-    font-size: 16px;
-  }
-  
-  .platform-details {
-    gap: 10px;
-  }
-  
-  .platform-actions {
-    gap: 6px;
-  }
-  
-  .platform-connect-btn,
-  .platform-disconnect-btn,
-  .platform-manage-btn {
-    padding: 10px 16px;
-    font-size: 13px;
-  }
-  
-  .platform-checkboxes {
+  .feature-list {
     grid-template-columns: 1fr;
   }
   
-  .form-actions {
-    flex-direction: column;
-  }
-  
-  .section-header {
+  .social-header {
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
   }
   
-  .image-upload-area {
-    padding: 24px;
+  .social-nav {
+    justify-content: center;
   }
-}
-
-@media (max-width: 480px) {
-  .platform-card {
-    padding: 16px;
-  }
-  
-  .platform-header {
-    flex-direction: column;
-    text-align: center;
-    gap: 8px;
-  }
-  
-  .platform-icon {
-    align-self: center;
-  }
-  
-  .platform-basic-info {
-    text-align: center;
-  }
-}
-
-/* Loading Animation */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.loading {
-  animation: pulse 2s infinite;
-}
-
-/* Connection Modal (overlay) */
-.connection-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.connection-modal .modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.connection-modal-content {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  width: 92%;
-  max-width: 520px;
-  padding: 20px;
-  box-shadow: var(--shadow-lg);
-}
-
-.connection-modal .modal-body {
-  max-height: 70vh;
-  overflow-y: auto;
 }
