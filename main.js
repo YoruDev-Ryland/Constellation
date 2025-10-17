@@ -5,6 +5,7 @@ const fsSync = require('fs');
 const Store = require('electron-store');
 const crypto = require('crypto');
 const os = require('os');
+const { initAutoUpdater } = require('./auto-updater');
 // Optional auth dependencies (lazy)
 let axios;
 let keytar;
@@ -130,6 +131,11 @@ function createWindow() {
   } else {
     mainWindow.loadFile('renderer/index.html');
   }
+
+  // Initialize auto-updater after window is created
+  mainWindow.webContents.on('did-finish-load', () => {
+    initAutoUpdater(mainWindow);
+  });
 
   // Uncomment the line below if you need developer tools for debugging
   // mainWindow.webContents.openDevTools();

@@ -52,5 +52,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   instagramLogin: (args) => ipcRenderer.invoke('instagram-login', args),
   instagramDiscoverAccounts: (args) => ipcRenderer.invoke('instagram-discover-accounts', args),
   instagramGetIgUser: (args) => ipcRenderer.invoke('instagram-get-ig-user', args),
-  instagramPublishImage: (args) => ipcRenderer.invoke('instagram-publish-image', args)
+  instagramPublishImage: (args) => ipcRenderer.invoke('instagram-publish-image', args),
+  
+  // Auto-updater
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  onUpdaterMessage: (callback) => ipcRenderer.on('updater-message', (event, message) => callback(message))
 });
