@@ -41,7 +41,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   analyzeFitsStars: (filePath, options) => ipcRenderer.invoke('analyze-fits-stars', filePath, options),
   createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath),
   copyFile: (sourcePath, destPath) => ipcRenderer.invoke('copy-file', sourcePath, destPath),
-  launchProgram: (programPath) => ipcRenderer.invoke('launch-program', programPath)
+  launchProgram: (programPath, args = []) => ipcRenderer.invoke('launch-program', programPath, Array.isArray(args) ? args : []),
+  // Starloch auth
+  authLogin: (identifier, password) => ipcRenderer.invoke('auth-login', { identifier, password }),
+  authMe: () => ipcRenderer.invoke('auth-me'),
+  authLogout: () => ipcRenderer.invoke('auth-logout')
   ,
   // Instagram/Meta Graph integrations
   instagramLogin: (args) => ipcRenderer.invoke('instagram-login', args),

@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "electron-store": "^8.2.0",
-    "fitsjs": "^0.6.6"
+    "fitsjs": "^0.6.6",
+    "axios": "^1.7.7",
+    "keytar": "^7.9.0"
   },
   "devDependencies": {
     "electron": "^38.2.0"

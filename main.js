@@ -1,9 +1,19 @@
 const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const Store = require('electron-store');
 const crypto = require('crypto');
 const os = require('os');
+// Optional auth dependencies (lazy)
+let axios;
+let keytar;
+try {
+  axios = require('axios');
+  keytar = require('keytar');
+} catch (e) {
+  console.warn('[auth] axios/keytar not available (install to enable Starloch auth):', e?.message);
+}
 
 // For license validation HTTP requests
 const https = require('https');
@@ -12,6 +22,78 @@ const { URL } = require('url');
 const store = new Store();
 let mainWindow;
 let oauthWindow;
+
+// --- Starloch Auth client setup ---
+const AUTH_API_BASE = 'https://starloch.com/desktop-auth';
+const AUTH_SERVICE = 'starloch-desktop';
+const AUTH_KEYS = { access: 'access-token', refresh: 'refresh-token' };
+let AUTH_API = null;
+
+function ensureAuthApi() {
+  if (!axios || !keytar) {
+    console.warn('[ensureAuthApi] axios or keytar not available');
+    return null;
+  }
+  if (AUTH_API) return AUTH_API;
+  
+  console.log('[ensureAuthApi] Creating axios instance for', AUTH_API_BASE);
+  AUTH_API = axios.create({ baseURL: AUTH_API_BASE, timeout: 15000 });
+  let refreshing = null;
+  
+  AUTH_API.interceptors.request.use(async (config) => {
+    try {
+      const token = await keytar.getPassword(AUTH_SERVICE, AUTH_KEYS.access);
+      if (token) {
+        console.log('[auth-request] Adding Bearer token to request:', config.method?.toUpperCase(), config.url);
+        config.headers = { ...(config.headers || {}), Authorization: `Bearer ${token}` };
+      } else {
+        console.log('[auth-request] No access token found for request:', config.method?.toUpperCase(), config.url);
+      }
+    } catch (err) {
+      console.error('[auth-request] Error getting access token:', err.message);
+    }
+    return config;
+  });
+  
+  AUTH_API.interceptors.response.use(undefined, async (error) => {
+    const original = error.config || {};
+    if (error.response?.status === 401 && !original._retry) {
+      console.log('[auth-response] 401 received, attempting refresh for:', original.url);
+      original._retry = true;
+      if (!refreshing) {
+        refreshing = (async () => {
+          const refresh = await keytar.getPassword(AUTH_SERVICE, AUTH_KEYS.refresh);
+          // If there's no refresh token, propagate the original 401 without throwing a new error
+          if (!refresh) {
+            console.warn('[auth-response] No refresh token available, clearing stale access token');
+            // Optionally clear any stale access token
+            try { await keytar.deletePassword(AUTH_SERVICE, AUTH_KEYS.access); } catch {}
+            throw error; // Keep the original 401 so callers can handle as Unauthorized
+          }
+          console.log('[auth-response] Attempting token refresh...');
+          const { data } = await AUTH_API.post('/refresh', { refresh_token: refresh });
+          const newAccess = data?.token || data?.access_token || data?.access || data?.jwt;
+          const newRefresh = data?.refresh_token || data?.refresh || data?.refreshToken;
+          if (!newAccess) {
+            console.error('[auth-response] Refresh response missing access token:', data);
+            throw new Error('Refresh failed');
+          }
+          console.log('[auth-response] Token refresh successful, saving new tokens');
+          await keytar.setPassword(AUTH_SERVICE, AUTH_KEYS.access, newAccess);
+          if (newRefresh) await keytar.setPassword(AUTH_SERVICE, AUTH_KEYS.refresh, newRefresh);
+          return newAccess;
+        })().finally(() => { refreshing = null; });
+      }
+      const newAccess = await refreshing;
+      original.headers = original.headers || {};
+      original.headers.Authorization = `Bearer ${newAccess}`;
+      console.log('[auth-response] Retrying original request with new token');
+      return AUTH_API(original);
+    }
+    throw error;
+  });
+  return AUTH_API;
+}
 
 
 function createWindow() {
@@ -814,7 +896,7 @@ ipcMain.handle('launch-program', async (event, programPath, args = []) => {
       return { success: false, error: 'No program path provided' };
     }
 
-    if (!fs.existsSync(programPath)) {
+    if (!fsSync.existsSync(programPath)) {
       return { success: false, error: 'Program file not found' };
     }
 
@@ -834,6 +916,126 @@ ipcMain.handle('launch-program', async (event, programPath, args = []) => {
     
   } catch (error) {
     console.error('[launch-program] Error launching program:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// --- Auth IPC ---
+ipcMain.handle('auth-login', async (_event, creds) => {
+  console.log('[auth-login] Login attempt for identifier:', creds?.identifier);
+  try {
+    const API = ensureAuthApi();
+    if (!API) throw new Error('Auth not available. Please install axios and keytar.');
+    if (!creds || !creds.identifier || !creds.password) throw new Error('Missing credentials');
+    
+    console.log('[auth-login] Sending login request to', AUTH_API_BASE + '/login');
+    const response = await API.post('/login', { identifier: creds.identifier, password: creds.password });
+    const data = response.data;
+    
+    console.log('[auth-login] Full response:', JSON.stringify(data, null, 2));
+    console.log('[auth-login] Response analysis:', {
+      hasToken: !!data?.token,
+      hasAccessToken: !!data?.access_token,
+      hasRefreshToken: !!data?.refresh_token,
+      hasUser: !!data?.user,
+      hasSuccess: !!data?.success,
+      responseKeys: Object.keys(data || {}),
+      dataType: typeof data
+    });
+    
+    // Support multiple token field names from the API
+    const accessToken = data?.token || data?.access_token || data?.access || data?.jwt || null;
+    const refreshToken = data?.refresh_token || data?.refresh || data?.refreshToken || null;
+    
+    if (!accessToken) {
+      console.error('[auth-login] No access token in response!');
+      throw new Error('Login response missing access token');
+    }
+    
+    console.log('[auth-login] Saving tokens to keytar...');
+    await keytar.setPassword(AUTH_SERVICE, AUTH_KEYS.access, accessToken);
+    if (refreshToken) {
+      await keytar.setPassword(AUTH_SERVICE, AUTH_KEYS.refresh, refreshToken);
+      console.log('[auth-login] Both access and refresh tokens saved');
+    } else {
+      console.log('[auth-login] Only access token saved (no refresh token in response)');
+    }
+    
+    // Verify tokens were saved
+    const savedAccess = await keytar.getPassword(AUTH_SERVICE, AUTH_KEYS.access);
+    const savedRefresh = await keytar.getPassword(AUTH_SERVICE, AUTH_KEYS.refresh);
+    console.log('[auth-login] Token verification - access:', !!savedAccess, 'refresh:', !!savedRefresh);
+    
+    console.log('[auth-login] Login successful for user:', data.user?.username || data.user?.email);
+    return { success: true, user: data.user || null };
+  } catch (error) {
+    const msg = error?.response?.data?.message || error.message || 'Login failed';
+    const status = error?.response?.status;
+    console.error('[auth-login] ERROR:', {
+      message: msg,
+      status,
+      hasResponse: !!error?.response,
+      responseData: error?.response?.data
+    });
+    return { success: false, error: msg };
+  }
+});
+
+ipcMain.handle('auth-me', async () => {
+  console.log('[auth-me] Fetching current user info...');
+  try {
+    const API = ensureAuthApi();
+    if (!API) throw new Error('Auth not available');
+    
+    // Check if we have a token
+    const hasToken = !!(await keytar.getPassword(AUTH_SERVICE, AUTH_KEYS.access));
+    console.log('[auth-me] Access token exists:', hasToken);
+    
+    const { data } = await API.get('/me');
+    console.log('[auth-me] User data received:', {
+      id: data?.id,
+      username: data?.username,
+      email: data?.email,
+      keys: Object.keys(data || {})
+    });
+    return { success: true, user: data };
+  } catch (error) {
+    const status = error?.response?.status;
+    console.log('[auth-me] ERROR:', {
+      status,
+      message: error.message,
+      hasResponse: !!error?.response
+    });
+    if (status === 401) return { success: false, error: 'Unauthorized' };
+    const msg = error?.response?.data?.message || error.message;
+    return { success: false, error: msg };
+  }
+});
+
+ipcMain.handle('auth-logout', async () => {
+  console.log('[auth-logout] Logging out...');
+  try {
+    const API = ensureAuthApi();
+    if (API) {
+      try {
+        const refresh = await keytar.getPassword(AUTH_SERVICE, AUTH_KEYS.refresh);
+        if (refresh) {
+          console.log('[auth-logout] Revoking refresh token on server...');
+          await API.post('/logout', { refresh_token: refresh });
+        }
+      } catch (err) {
+        console.warn('[auth-logout] Server-side logout failed:', err.message);
+      }
+    }
+    if (keytar) {
+      console.log('[auth-logout] Deleting local tokens...');
+      try { await keytar.deletePassword(AUTH_SERVICE, AUTH_KEYS.access); } catch {}
+      try { await keytar.deletePassword(AUTH_SERVICE, AUTH_KEYS.refresh); } catch {}
+    }
+    console.log('[auth-logout] Logout complete');
+    return { success: true };
+  } catch (error) {
+    console.error('[auth-logout] ERROR:', error.message);
     return { success: false, error: error.message };
   }
 });
