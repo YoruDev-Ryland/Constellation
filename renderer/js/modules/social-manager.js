@@ -511,12 +511,17 @@
           onPostClick: (postId) => this.showPostDetail(postId),
           onUserClick: (userId) => this.showUserProfile(userId)
         });
+      } else {
+        // Update the container reference in case the DOM was rebuilt
+        this.feedView.container = communityContainer;
       }
       
       // Store reference for filter updates
       this.currentFeedView = this.feedView;
       
-      this.feedView.render();
+      // Always render/re-render the feed when community view is initialized
+      // This ensures the feed appears even after tab switches that rebuild the DOM
+      await this.feedView.render();
     }
 
     showCreatePost() {

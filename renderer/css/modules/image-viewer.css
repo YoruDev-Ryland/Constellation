@@ -3,13 +3,19 @@
   /* keep viewer below the top titlebar (32px) so it doesn't overlap window controls */
   top: 32px; 
   left: 0; right: 0; bottom: 0;
-  display: none; 
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
   z-index: 1200; 
   background: rgba(10, 14, 23, 0.95);
   backdrop-filter: blur(8px);
+  transition: opacity 0.15s ease;
 }
 
-.image-viewer-modal.visible { display: flex; }
+.image-viewer-modal.visible { 
+  opacity: 1;
+  pointer-events: auto;
+}
 
 .image-viewer-modal .iv-content { 
   position: relative; 

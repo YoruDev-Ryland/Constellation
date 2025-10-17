@@ -112,22 +112,26 @@ class ImageViewer {
   async show(src) {
     if (!src) return;
     
-    // Show modal immediately with loading spinner
+    // Reset any previous transform and clear image immediately
+    this._reset();
+    this.imgEl.src = '';
+    
+    // Hide stage and image, show loading spinner
+    this.stage.style.opacity = '0';
+    this.imgEl.style.opacity = '0';
+    this.loadingEl.style.display = 'flex';
+    
+    // Show modal immediately with loading spinner visible
     this.modal.classList.add('visible');
     document.body.style.overflow = 'hidden';
     
-    // Show loading spinner, hide image
-    this.loadingEl.style.display = 'flex';
-    this.stage.style.opacity = '0';
-    this.imgEl.style.opacity = '0';
-    
-    // Reset any previous transform immediately
-    this._reset();
-    
-    // Allow layout to settle this frame
+    // Force multiple reflows to ensure the modal is fully rendered and visible
+    // before we start loading the image
     await new Promise((res) => requestAnimationFrame(res));
+    await new Promise((res) => requestAnimationFrame(res));
+    await new Promise((res) => setTimeout(res, 50)); // Extra delay to ensure visibility
 
-    // Set source and wait for decode
+    // Now set source and wait for decode
     this.imgEl.src = src;
     if (this.debug) console.debug('[IV] show -> set src', { src });
     try {
@@ -143,10 +147,11 @@ class ImageViewer {
       // Ignore decode errors and continue with a best-effort fit
     }
     
-    // Hide loading spinner, show image
+    // Hide loading spinner, show stage and image
     this.loadingEl.style.display = 'none';
     this.stage.style.opacity = '1';
     this.imgEl.style.opacity = '1';
+    
     // Wait a frame for image metrics to propagate to layout
     await new Promise((res) => requestAnimationFrame(res));
     if (this.debug) console.debug('[IV] before _fitToStage', { stage: { w: this.stage.clientWidth, h: this.stage.clientHeight }, nat: { w: this.imgEl.naturalWidth, h: this.imgEl.naturalHeight } });
