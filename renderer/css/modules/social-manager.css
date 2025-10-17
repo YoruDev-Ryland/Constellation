@@ -168,7 +168,7 @@
 /* Tab Content */
 .tab-content {
   display: none;
-  padding: 2rem;
+  padding: 0px 32px;
   animation: fadeIn 0.3s ease;
 }
 
