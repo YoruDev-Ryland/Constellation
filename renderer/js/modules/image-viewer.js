@@ -20,6 +20,10 @@ class ImageViewer {
           <button class="iv-btn iv-reset">Reset</button>
           <button class="iv-btn iv-zoom-in">+</button>
         </div>
+        <div class="iv-loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Loading image...</p>
+        </div>
         <div class="iv-stage">
           <img class="iv-image" src="" draggable="false">
         </div>
@@ -39,6 +43,7 @@ class ImageViewer {
     this.modal = modal;
     this.imgEl = modal.querySelector('.iv-image');
     this.stage = modal.querySelector('.iv-stage');
+    this.loadingEl = modal.querySelector('.iv-loading');
     
     // Close handlers
     modal.querySelector('.iv-close').addEventListener('click', () => this.hide());
@@ -106,11 +111,19 @@ class ImageViewer {
 
   async show(src) {
     if (!src) return;
-    // Make viewer visible first so stage has real dimensions
+    
+    // Show modal immediately with loading spinner
     this.modal.classList.add('visible');
     document.body.style.overflow = 'hidden';
+    
+    // Show loading spinner, hide image
+    this.loadingEl.style.display = 'flex';
+    this.stage.style.opacity = '0';
+    this.imgEl.style.opacity = '0';
+    
     // Reset any previous transform immediately
     this._reset();
+    
     // Allow layout to settle this frame
     await new Promise((res) => requestAnimationFrame(res));
 
@@ -129,6 +142,11 @@ class ImageViewer {
     } catch (_) {
       // Ignore decode errors and continue with a best-effort fit
     }
+    
+    // Hide loading spinner, show image
+    this.loadingEl.style.display = 'none';
+    this.stage.style.opacity = '1';
+    this.imgEl.style.opacity = '1';
     // Wait a frame for image metrics to propagate to layout
     await new Promise((res) => requestAnimationFrame(res));
     if (this.debug) console.debug('[IV] before _fitToStage', { stage: { w: this.stage.clientWidth, h: this.stage.clientHeight }, nat: { w: this.imgEl.naturalWidth, h: this.imgEl.naturalHeight } });

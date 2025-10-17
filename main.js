@@ -1040,6 +1040,25 @@ ipcMain.handle('auth-logout', async () => {
   }
 });
 
+// Get current auth token (for community API)
+ipcMain.handle('get-auth-token', async () => {
+  try {
+    console.log('[get-auth-token] Retrieving access token from keytar');
+    const accessToken = await keytar.getPassword(AUTH_SERVICE, AUTH_KEYS.access);
+    
+    if (!accessToken) {
+      console.log('[get-auth-token] No access token found');
+      return null;
+    }
+    
+    console.log('[get-auth-token] Access token retrieved successfully');
+    return accessToken;
+  } catch (error) {
+    console.error('[get-auth-token] Error:', error);
+    return null;
+  }
+});
+
 // Scan a folder directly for FITS files (for Sub-Frame Analyzer)
 ipcMain.handle('scan-fits-folder', async (event, folderPath) => {
   try {

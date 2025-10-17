@@ -10,6 +10,9 @@
       this.user = null; // { username, email, displayName?, avatarUrl? }
       this.initialized = false;
       this.loginModal = null;
+      this.currentView = 'feed'; // 'feed', 'post-detail', 'user-profile'
+      this.feedView = null;
+      this.composerOverlay = null;
     }
 
     async init() {
@@ -55,6 +58,11 @@
       } else {
         this.render();
       }
+      
+      // Initialize community view if authenticated
+      if (this.user) {
+        await this.initCommunityView();
+      }
     }
 
     hide() {
@@ -74,17 +82,61 @@
       });
 
       this.container.innerHTML = `
-        <header class="content-header">
-          <h1>Constellation Community</h1>
-          <div class="header-actions">
+        <header class="community-unified-header">
+          <div class="header-left">
+            <h1 class="header-title">
+              <i class="fas fa-users"></i>
+              Community
+            </h1>
+            <div class="feed-filters">
+              <button class="filter-btn active" data-filter="all">
+                <i class="fas fa-globe"></i> All Posts
+              </button>
+              <button class="filter-btn" data-filter="following">
+                <i class="fas fa-users"></i> Following
+              </button>
+              <button class="filter-btn" data-filter="featured">
+                <i class="fas fa-star"></i> Featured
+              </button>
+            </div>
+          </div>
+          
+          <div class="header-right">
+            <button class="btn-primary create-post-btn">
+              <i class="fas fa-plus"></i>
+              <span>Create Post</span>
+            </button>
+            
             ${this.user ? `
-              <div class="user-profile-header">
-                <div class="user-avatar-sm">${initials}</div>
-                <span class="user-name-header">${username}</span>
-                <button class="btn-secondary" data-action="logout">
-                  <i class="fas fa-sign-out-alt"></i>
-                  Logout
+              <div class="user-menu-wrapper">
+                <button class="user-menu-trigger">
+                  <div class="user-avatar-sm">${initials}</div>
+                  <span class="user-name-header">${username}</span>
+                  <i class="fas fa-chevron-down"></i>
                 </button>
+                <div class="user-dropdown">
+                  <div class="dropdown-header">
+                    <div class="user-avatar-md">${initials}</div>
+                    <div class="user-info">
+                      <div class="user-name">${username}</div>
+                      <div class="user-email">${this.user.email || ''}</div>
+                    </div>
+                  </div>
+                  <div class="dropdown-divider"></div>
+                  <button class="dropdown-item" data-action="profile">
+                    <i class="fas fa-user"></i>
+                    View Profile
+                  </button>
+                  <button class="dropdown-item" data-action="settings">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                  </button>
+                  <div class="dropdown-divider"></div>
+                  <button class="dropdown-item danger" data-action="logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                  </button>
+                </div>
               </div>
             ` : `
               <button class="btn-primary" data-action="login">
@@ -103,72 +155,7 @@
 
     renderAuthenticatedView() {
       return `
-        <div class="social-tabs">
-          <button class="tab-btn active" data-tab="feed">
-            <i class="fas fa-home"></i>
-            Feed
-          </button>
-          <button class="tab-btn" data-tab="discover">
-            <i class="fas fa-compass"></i>
-            Discover
-          </button>
-          <button class="tab-btn" data-tab="my-posts">
-            <i class="fas fa-user"></i>
-            My Posts
-          </button>
-        </div>
-
-        <div class="tab-content active" data-tab-content="feed">
-          <div class="social-placeholder">
-            <div class="placeholder-icon">
-              <i class="fas fa-rocket"></i>
-            </div>
-            <h2>Welcome to Constellation Community</h2>
-            <p>Share your astrophotography captures, discuss processing techniques, and connect with fellow imagers.</p>
-            
-            <div class="feature-grid">
-              <div class="feature-card">
-                <i class="fas fa-image"></i>
-                <h3>Share Images</h3>
-                <p>Post with metadata, filters, and integration details</p>
-              </div>
-              <div class="feature-card">
-                <i class="fas fa-comments"></i>
-                <h3>Engage</h3>
-                <p>Comment threads with mentions and reactions</p>
-              </div>
-              <div class="feature-card">
-                <i class="fas fa-users"></i>
-                <h3>Follow</h3>
-                <p>Curate your feed by following other imagers</p>
-              </div>
-              <div class="feature-card">
-                <i class="fas fa-hashtag"></i>
-                <h3>Organize</h3>
-                <p>Tag posts by object type and filters</p>
-              </div>
-            </div>
-
-            <div class="coming-soon">
-              <i class="fas fa-info-circle"></i>
-              Core social features are under active development. Stay tuned!
-            </div>
-          </div>
-        </div>
-
-        <div class="tab-content" data-tab-content="discover">
-          <div class="empty-state">
-            <i class="fas fa-compass"></i>
-            <p>Discover page coming soon</p>
-          </div>
-        </div>
-
-        <div class="tab-content" data-tab-content="my-posts">
-          <div class="empty-state">
-            <i class="fas fa-user"></i>
-            <p>Your posts will appear here</p>
-          </div>
-        </div>
+        <div id="communityContainer"></div>
       `;
     }
 
@@ -222,6 +209,8 @@
           const action = actionBtn.getAttribute('data-action');
           if (action === 'login') await this.openLoginModal();
           if (action === 'logout') await this.logout();
+          if (action === 'profile') this.showUserProfile();
+          if (action === 'settings') this.showSettings();
           return;
         }
 
@@ -231,7 +220,70 @@
           const tab = tabBtn.getAttribute('data-tab');
           this.switchTab(tab);
         }
+
+        // Filter buttons
+        const filterBtn = e.target.closest('.filter-btn');
+        if (filterBtn) {
+          const filter = filterBtn.dataset.filter;
+          this.handleFilterChange(filter, filterBtn);
+        }
+
+        // Create post button
+        const createBtn = e.target.closest('.create-post-btn');
+        if (createBtn) {
+          this.showCreatePost();
+        }
+
+        // User menu toggle
+        const userMenuTrigger = e.target.closest('.user-menu-trigger');
+        if (userMenuTrigger) {
+          e.stopPropagation();
+          this.toggleUserMenu();
+        }
+
+        // Close user menu if clicking outside
+        if (!e.target.closest('.user-menu-wrapper')) {
+          this.closeUserMenu();
+        }
       });
+    }
+
+    handleFilterChange(filter, button) {
+      // Update active state
+      const filterBtns = this.container.querySelectorAll('.filter-btn');
+      filterBtns.forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+
+      // Update feed if it exists
+      if (this.currentFeedView && this.currentFeedView.setFilter) {
+        this.currentFeedView.setFilter(filter);
+      }
+    }
+
+    toggleUserMenu() {
+      const wrapper = this.container.querySelector('.user-menu-wrapper');
+      if (wrapper) {
+        wrapper.classList.toggle('active');
+      }
+    }
+
+    closeUserMenu() {
+      const wrapper = this.container.querySelector('.user-menu-wrapper');
+      if (wrapper) {
+        wrapper.classList.remove('active');
+      }
+    }
+
+    showUserProfile() {
+      // TODO: Implement user profile view
+      console.log('Show user profile');
+      alert('Profile view coming soon!');
+    }
+
+    showSettings() {
+      // TODO: Implement settings view
+      console.log('Show settings');
+      alert('Settings coming soon!');
     }
 
     switchTab(tabName) {
@@ -445,10 +497,187 @@
         }
       }
     }
+
+    async initCommunityView() {
+      const communityContainer = document.getElementById('communityContainer');
+      if (!communityContainer) {
+        console.error('[SocialManager] Community container not found');
+        return;
+      }
+
+      // Initialize feed view
+      if (!this.feedView) {
+        this.feedView = new FeedView(communityContainer, {
+          onPostClick: (postId) => this.showPostDetail(postId),
+          onUserClick: (userId) => this.showUserProfile(userId)
+        });
+      }
+      
+      // Store reference for filter updates
+      this.currentFeedView = this.feedView;
+      
+      this.feedView.render();
+    }
+
+    showCreatePost() {
+      if (this.composerOverlay) {
+        this.composerOverlay.remove();
+      }
+
+      this.composerOverlay = document.createElement('div');
+      this.composerOverlay.className = 'composer-overlay';
+      
+      const composer = new PostComposer({
+        onSubmit: async (postData) => {
+          try {
+            await window.CommunityAPI.createPost(postData);
+            this.closeComposer();
+            
+            // Refresh feed
+            if (this.feedView) {
+              this.feedView.refresh();
+            }
+            
+            if (window.showAlert) {
+              await window.showAlert('Success!', 'Your post has been created.', 'success');
+            }
+          } catch (error) {
+            console.error('[SocialManager] Create post failed:', error);
+            throw error;
+          }
+        },
+        onCancel: () => this.closeComposer()
+      });
+
+      this.composerOverlay.appendChild(composer.render());
+      document.body.appendChild(this.composerOverlay);
+
+      // Close on overlay click
+      this.composerOverlay.addEventListener('click', (e) => {
+        if (e.target === this.composerOverlay) {
+          this.closeComposer();
+        }
+      });
+
+      // Close on Escape key
+      const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+          this.closeComposer();
+          document.removeEventListener('keydown', escapeHandler);
+        }
+      };
+      document.addEventListener('keydown', escapeHandler);
+    }
+
+    showEditPost(post) {
+      if (this.composerOverlay) {
+        this.composerOverlay.remove();
+      }
+
+      this.composerOverlay = document.createElement('div');
+      this.composerOverlay.className = 'composer-overlay';
+      
+      const composer = new PostComposer({
+        editMode: true,
+        post: post,
+        onSubmit: async (postData) => {
+          try {
+            await window.CommunityAPI.updatePost(post.id, postData);
+            this.closeComposer();
+            
+            // Refresh feed
+            if (this.feedView) {
+              this.feedView.refresh();
+            }
+            
+            if (window.showAlert) {
+              await window.showAlert('Updated!', 'Your post has been updated.', 'success');
+            }
+          } catch (error) {
+            console.error('[SocialManager] Update post failed:', error);
+            throw error;
+          }
+        },
+        onCancel: () => this.closeComposer()
+      });
+
+      this.composerOverlay.appendChild(composer.render());
+      document.body.appendChild(this.composerOverlay);
+
+      // Close handlers
+      this.composerOverlay.addEventListener('click', (e) => {
+        if (e.target === this.composerOverlay) {
+          this.closeComposer();
+        }
+      });
+
+      const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+          this.closeComposer();
+          document.removeEventListener('keydown', escapeHandler);
+        }
+      };
+      document.addEventListener('keydown', escapeHandler);
+    }
+
+    closeComposer() {
+      if (this.composerOverlay) {
+        this.composerOverlay.remove();
+        this.composerOverlay = null;
+      }
+    }
+
+    async showPostDetail(postId) {
+      const communityContainer = document.getElementById('communityContainer');
+      if (!communityContainer) return;
+
+      this.currentView = 'post-detail';
+      
+      const postDetailView = new PostDetailView(communityContainer, postId, {
+        onBack: () => this.showFeed(),
+        onUserClick: (userId) => this.showUserProfile(userId),
+        onEdit: (post) => this.showEditPost(post),
+        onDelete: async (postId) => {
+          // After delete, go back to feed
+          this.showFeed();
+        }
+      });
+
+      await postDetailView.render();
+    }
+
+    showFeed() {
+      this.currentView = 'feed';
+      const communityContainer = document.getElementById('communityContainer');
+      if (!communityContainer) return;
+
+      if (this.feedView) {
+        this.feedView.render();
+      } else {
+        this.initCommunityView();
+      }
+    }
+
+    showUserProfile(userId) {
+      // TODO: Implement user profile view
+      console.log('[SocialManager] Show user profile:', userId);
+      alert('User profile view coming soon!');
+    }
+
+    handleLogout() {
+      this.logout();
+    }
   }
 
   window.ensureSocialManager = function() {
     if (!instance) instance = new SocialManager();
     return instance;
   };
+
+  // Also expose as window.socialManager for easy access
+  Object.defineProperty(window, 'socialManager', {
+    get: function() {
+      return instance || (instance = new SocialManager());
+    }
+  });
 })();

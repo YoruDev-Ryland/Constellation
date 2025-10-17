@@ -45,7 +45,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Starloch auth
   authLogin: (identifier, password) => ipcRenderer.invoke('auth-login', { identifier, password }),
   authMe: () => ipcRenderer.invoke('auth-me'),
-  authLogout: () => ipcRenderer.invoke('auth-logout')
+  authLogout: () => ipcRenderer.invoke('auth-logout'),
+  getAuthToken: () => ipcRenderer.invoke('get-auth-token')
   ,
   // Instagram/Meta Graph integrations
   instagramLogin: (args) => ipcRenderer.invoke('instagram-login', args),
