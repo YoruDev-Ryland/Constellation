@@ -137,7 +137,7 @@ function createWindow() {
     initAutoUpdater(mainWindow);
   });
 
-  // Uncomment the line below if you need developer tools for debugging
+  // Uncomment the line below if you need developer tools for debugging by default
   // mainWindow.webContents.openDevTools();
 }
 
