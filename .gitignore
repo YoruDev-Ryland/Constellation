@@ -6,3 +6,7 @@ dist/
 
 # Documentation files (keep private)
 *.md
+
+# Server services (kept in separate repos)
+auth-service/
+community-service/
