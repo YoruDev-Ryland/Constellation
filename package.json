@@ -47,6 +47,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "auto-updater.js",
       "renderer/**/*",
       "node_modules/**/*",
       "package.json"
