@@ -3,3 +3,6 @@ dist/
 .env
 .DS_Store
 .vscode/
+
+# Documentation files (keep private)
+*.md
