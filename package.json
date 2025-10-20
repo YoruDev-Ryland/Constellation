@@ -1,6 +1,6 @@
 {
   "name": "constellation",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Astrophotography file organization and tracking",
   "main": "main.js",
   "author": "Your Name <your.email@example.com>",
