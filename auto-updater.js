@@ -19,6 +19,9 @@ autoUpdater.autoInstallOnAppQuit = true; // Install when app quits
 let updateDownloaded = false;
 let mainWindow = null;
 
+// Set up IPC handlers immediately when module loads
+setupIpcHandlers();
+
 /**
  * Initialize auto-updater with the main window
  * @param {BrowserWindow} window - The main application window
@@ -33,7 +36,6 @@ function initAutoUpdater(window) {
 
   // Set up event listeners
   setupEventListeners();
-  setupIpcHandlers();
 }
 
 /**
