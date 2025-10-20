@@ -4,10 +4,10 @@
   "description": "Astrophotography file organization and tracking",
   "main": "main.js",
   "author": "Your Name <your.email@example.com>",
-  "homepage": "https://github.com/yourusername/Constellation",
+  "homepage": "https://github.com/YoruDev-Ryland/Constellation",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/Constellation.git"
+    "url": "https://github.com/YoruDev-Ryland/Constellation.git"
   },
   "scripts": {
     "start": "electron .",
@@ -38,7 +38,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "yourusername",
+        "owner": "YoruDev-Ryland",
         "repo": "Constellation",
         "private": false,
         "releaseType": "release"
