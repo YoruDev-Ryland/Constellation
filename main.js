@@ -165,6 +165,10 @@ ipcMain.handle('save-settings', (event, settings) => {
   return true;
 });
 
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
 ipcMain.handle('select-directory', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory']
