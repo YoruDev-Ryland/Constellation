@@ -1,0 +1,58 @@
+{
+  "id": "instagram-post-creator",
+  "name": "Instagram Post Creator",
+  "description": "Create multi-panel Instagram posts with precise image positioning, cropping, and scaling. Similar to SCRL app functionality.",
+  "version": "1.0.0",
+  "author": "Constellation",
+  "category": "Social Media",
+  "icon": "fas fa-camera",
+  "buttonId": "instagramPostCreatorBtn",
+  "enabled": true,
+  "order": 4,
+  "main": "instagram-post-creator.js",
+  "css": "instagram-post-creator.css",
+  "window": {
+    "width": 1200,
+    "height": 800,
+    "resizable": true,
+    "modal": true
+  },
+  "features": [
+    "Multi-panel layouts (1-10 slides)",
+    "Instagram-optimized aspect ratios",
+    "Drag & drop image import",
+    "Image positioning, scaling, rotation",
+    "Precise cropping controls",
+    "High-quality JPG export",
+    "Custom save location"
+  ],
+  "aspectRatios": {
+    "square": {
+      "ratio": "1:1",
+      "width": 1080,
+      "height": 1080,
+      "name": "Square"
+    },
+    "portrait": {
+      "ratio": "4:5",
+      "width": 1080,
+      "height": 1350,
+      "name": "Portrait"
+    },
+    "story": {
+      "ratio": "9:16",
+      "width": 1080,
+      "height": 1920,
+      "name": "Story"
+    }
+  },
+  "maxSlides": 10,
+  "exportFormat": "jpg",
+  "exportQuality": 0.95,
+  "futureFeatures": [
+    "Email export",
+    "QR code sharing",
+    "Cloud sync",
+    "Template presets"
+  ]
+}

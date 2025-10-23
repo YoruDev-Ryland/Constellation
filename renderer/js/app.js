@@ -768,6 +768,41 @@ async function openAltitudeTimeline() {
   }
 }
 
+// Instagram Post Creator Integration
+async function openInstagramPostCreator() {
+  console.log('Opening Instagram Post Creator');
+  
+  try {
+    // Switch to Instagram Post Creator view
+    switchView('instagramPostCreatorView');
+    
+    // Initialize the Instagram Post Creator if not already done
+    if (!window.instagramPostCreatorTool) {
+      // Give the DOM a moment to update before initializing
+      setTimeout(() => {
+        try {
+          console.log('Initializing Instagram Post Creator...');
+          const containerEl = document.getElementById('instagramPostCreatorContainer');
+          if (!containerEl) {
+            console.error('Instagram Post Creator container not found: #instagramPostCreatorContainer');
+            return;
+          }
+          window.instagramPostCreatorTool = new InstagramPostCreator(containerEl);
+          console.log('Instagram Post Creator initialized successfully');
+        } catch (error) {
+          console.error('Error initializing Instagram Post Creator:', error);
+          alert('Error initializing Instagram Post Creator: ' + error.message);
+        }
+      }, 100);
+    }
+    
+    console.log('Instagram Post Creator view opened successfully');
+  } catch (error) {
+    console.error('Error opening Instagram Post Creator:', error);
+    alert('Error opening Instagram Post Creator: ' + error.message);
+  }
+}
+
 // H-R Diagram Integration
 function createHRDiagram() {
   console.log('Opening H-R Diagram view');
@@ -853,6 +888,24 @@ function initializeToolsView() {
     console.warn('Altitude Timeline button not found in DOM');
   }
 
+  // Add event listener for Instagram Post Creator button if it exists
+  const instagramPostCreatorButton = document.getElementById('instagramPostCreatorBtn');
+  if (instagramPostCreatorButton) {
+    // Remove any existing listeners
+    instagramPostCreatorButton.replaceWith(instagramPostCreatorButton.cloneNode(true));
+    const newInstagramPostCreatorButton = document.getElementById('instagramPostCreatorBtn');
+    
+    newInstagramPostCreatorButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Instagram Post Creator button clicked');
+      openInstagramPostCreator();
+    });
+    
+    console.log('Instagram Post Creator button listener added');
+  } else {
+    console.warn('Instagram Post Creator button not found in DOM');
+  }
+
   // Add back to tools button handler
   const backToToolsBtn = document.getElementById('backToToolsBtn');
   if (backToToolsBtn) {
@@ -873,6 +926,17 @@ function initializeToolsView() {
       switchView('tools');
     });
     console.log('Back to Tools from HR Diagram button listener added');
+  }
+
+  // Instagram Post Creator back button
+  const backToToolsFromInstagramBtn = document.getElementById('backToToolsFromInstagramBtn');
+  if (backToToolsFromInstagramBtn) {
+    backToToolsFromInstagramBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Back to Tools from Instagram Post Creator button clicked');
+      switchView('tools');
+    });
+    console.log('Back to Tools from Instagram Post Creator button listener added');
   }
 }
 

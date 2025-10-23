@@ -31,7 +31,8 @@ class ToolRegistry {
       const possibleTools = [
         'hr-diagram',
         'sub-analyzer', 
-        'altitude-timeline'
+        'altitude-timeline',
+        'instagram-post-creator'
       ];
 
       const toolPromises = possibleTools.map(async (toolId) => {

@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="css/modules/community/unified-header.css">
   <link rel="stylesheet" href="css/modules/community/post-composer.css">
   <link rel="stylesheet" href="css/modules/tools/altitude-timeline.css">
+  <link rel="stylesheet" href="css/modules/tools/instagram-post-creator.css">
   <link rel="stylesheet" href="css/modules/modal-manager.css">
   <link rel="stylesheet" href="css/modules/update-manager.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -362,6 +363,29 @@
         </div>
       </div>
 
+      <!-- Instagram Post Creator View -->
+      <div class="view" id="instagramPostCreatorView">
+        <header class="content-header">
+          <div class="header-back">
+            <button class="btn-icon" id="backToToolsFromInstagramBtn" title="Back to Tools">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div>
+              <h1>Instagram Post Creator</h1>
+              <p class="header-subtitle">Create multi-panel Instagram posts with precise image positioning</p>
+            </div>
+          </div>
+        </header>
+        
+        <div class="tool-content-wrapper">
+          <div id="instagramPostCreatorContainer">
+            <!-- Instagram Post Creator will be rendered here -->
+          </div>
+        </div>
+      </div>
+
       <!-- H-R Diagram View -->
       <div class="view" id="hrDiagramView">
         <header class="content-header">
@@ -485,6 +509,7 @@
   <!-- Feature modules -->
   <script src="js/modules/tools/hr-diagram.js"></script>
   <script src="js/modules/tools/altitude-timeline.js"></script>
+  <script src="js/modules/tools/instagram-post-creator.js"></script>
   
   <!-- Community modules -->
   <script src="js/modules/community/community-api.js"></script>
