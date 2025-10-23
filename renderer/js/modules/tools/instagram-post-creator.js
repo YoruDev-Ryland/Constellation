@@ -283,6 +283,9 @@ class InstagramPostCreator {
     
     // Properties panel
     this.setupPropertiesPanel();
+
+    // Update display when canvas size selection changes
+    document.getElementById('canvasSize').addEventListener('change', () => this.updateCanvasDisplay());
   }
 
   setupDragAndDrop() {
@@ -798,52 +801,79 @@ class InstagramPostCreator {
   initializeSlides(count) {
     const canvas = document.getElementById('mainCanvas');
     const slideNav = document.getElementById('slideNav');
-    
-    // Clear existing slides
-    canvas.innerHTML = '';
-    slideNav.innerHTML = '';
-    this.slides = [];
-    
-    // Create slide navigation
-    for (let i = 0; i < count; i++) {
-      const navBtn = document.createElement('button');
-      navBtn.className = `ipc-slide-btn ${i === 0 ? 'active' : ''}`;
-      navBtn.textContent = i + 1;
-      navBtn.addEventListener('click', () => this.switchToSlide(i));
-      slideNav.appendChild(navBtn);
-      
-      // Create slide
-      const slide = document.createElement('div');
-      slide.className = `ipc-slide ${i === 0 ? 'active' : ''}`;
-      slide.dataset.slideIndex = i;
-      
-      // Add panel grid
-      if (count > 1) {
-        const config = this.panelConfig[count] || { rows: 1, cols: count };
-        slide.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
-        slide.style.gridTemplateRows = `repeat(${config.rows}, 1fr)`;
-        
-        // Add grid lines
-        for (let r = 1; r < config.rows; r++) {
-          const line = document.createElement('div');
-          line.className = 'ipc-grid-line horizontal';
-          line.style.top = `${(100 / config.rows) * r}%`;
-          slide.appendChild(line);
-        }
-        
-        for (let c = 1; c < config.cols; c++) {
-          const line = document.createElement('div');
-          line.className = 'ipc-grid-line vertical';
-          line.style.left = `${(100 / config.cols) * c}%`;
-          slide.appendChild(line);
-        }
-      }
-      
-      canvas.appendChild(slide);
-      this.slides.push(slide);
+
+  // Preserve existing images if any
+  const existingImages = Array.from(canvas.querySelectorAll('.ipc-canvas-image'));
+
+  // Clear existing slides (we'll use a single combined slide)
+  canvas.innerHTML = '';
+  slideNav.innerHTML = '';
+  this.slides = [];
+
+    // Determine panel grid for the requested count
+    const config = this.panelConfig[count] || { rows: 1, cols: count };
+    this.panelCount = count;
+    this.canvasCols = config.cols;
+    this.canvasRows = config.rows;
+
+    // Create a single combined slide that represents the full multi-panel canvas
+    const slide = document.createElement('div');
+    slide.className = 'ipc-slide active';
+    slide.dataset.slideIndex = 0;
+
+    // Add grid lines for visual separation between panels
+    for (let r = 1; r < config.rows; r++) {
+      const line = document.createElement('div');
+      line.className = 'ipc-grid-line horizontal';
+      line.style.top = `${(100 / config.rows) * r}%`;
+      slide.appendChild(line);
     }
-    
+
+    for (let c = 1; c < config.cols; c++) {
+      const line = document.createElement('div');
+      line.className = 'ipc-grid-line vertical';
+      line.style.left = `${(100 / config.cols) * c}%`;
+      slide.appendChild(line);
+    }
+
+    canvas.appendChild(slide);
+    this.slides.push(slide);
     this.currentSlide = 0;
+
+    // Re-attach preserved images to the new combined slide
+    existingImages.forEach(img => {
+      // remove from old parent and append to new slide
+      try {
+        img.remove();
+      } catch (e) {}
+      slide.appendChild(img);
+    });
+
+    // Update the on-screen canvas dimensions to represent the combined panels
+    this.updateCanvasDisplay();
+  }
+
+  updateCanvasDisplay() {
+    const canvas = document.getElementById('mainCanvas');
+    if (!canvas) return;
+
+    // Determine per-panel base size from the canvasSize selector (this represents single-panel size)
+    const baseSize = parseInt(document.getElementById('canvasSize').value) || 1080;
+    const cols = this.canvasCols || 1;
+    const rows = this.canvasRows || 1;
+
+    const totalWidth = baseSize * cols;
+    const totalHeight = baseSize * rows;
+
+    // Apply pixel dimensions to the on-screen canvas. The wrapper + fitToView will scale it to fit the UI.
+    canvas.style.width = `${totalWidth}px`;
+    canvas.style.height = `${totalHeight}px`;
+
+    // Ensure slides (the single combined slide) match the canvas size
+    this.slides.forEach(slide => {
+      slide.style.width = `${totalWidth}px`;
+      slide.style.height = `${totalHeight}px`;
+    });
   }
 
   switchToSlide(index) {
@@ -874,12 +904,17 @@ class InstagramPostCreator {
     const wrapper = document.getElementById('canvasWrapper');
     const canvas = document.getElementById('mainCanvas');
     const wrapperRect = wrapper.getBoundingClientRect();
-    const canvasSize = parseInt(document.getElementById('canvasSize').value);
-    
-    const scaleX = wrapperRect.width / canvasSize;
-    const scaleY = wrapperRect.height / canvasSize;
+    const singlePanelSize = parseInt(document.getElementById('canvasSize').value) || 1080;
+    const cols = this.canvasCols || 1;
+    const rows = this.canvasRows || 1;
+
+    const canvasWidth = singlePanelSize * cols;
+    const canvasHeight = singlePanelSize * rows;
+
+    const scaleX = wrapperRect.width / canvasWidth;
+    const scaleY = wrapperRect.height / canvasHeight;
     const scale = Math.min(scaleX, scaleY, 1) * 0.9; // 90% to leave some padding
-    
+
     const zoomPercent = Math.round(scale * 100);
     document.getElementById('zoomSlider').value = zoomPercent;
     document.getElementById('zoomValue').textContent = `${zoomPercent}%`;
@@ -904,8 +939,11 @@ class InstagramPostCreator {
 
   async exportSlides() {
     const { ipcRenderer } = require('electron');
-    const slideCount = this.slides.length;
-    const canvasSize = parseInt(document.getElementById('canvasSize').value);
+    const slideCount = this.panelCount || this.slides.length;
+    const singlePanelSize = parseInt(document.getElementById('canvasSize').value);
+    const cols = this.canvasCols || 1;
+    const rows = this.canvasRows || 1;
+    const canvasSize = singlePanelSize * Math.max(cols, 1); // combined canvas width/height basis (we'll use square base per panel)
     
     // Create export modal
     const modal = document.createElement('div');
@@ -932,65 +970,51 @@ class InstagramPostCreator {
         return;
       }
       
-      const config = this.panelConfig[slideCount] || { rows: 1, cols: slideCount };
-      const panelWidth = canvasSize / config.cols;
-      const panelHeight = canvasSize / config.rows;
-      
-      for (let i = 0; i < slideCount; i++) {
-        statusText.textContent = `Exporting slide ${i + 1} of ${slideCount}...`;
-        progressBar.style.width = `${((i + 1) / slideCount) * 100}%`;
-        
-        const slide = this.slides[i];
-        const canvas = document.createElement('canvas');
-        canvas.width = canvasSize;
-        canvas.height = canvasSize;
-        const ctx = canvas.getContext('2d');
-        
-        // Render slide content to canvas
-        await this.renderSlideToCanvas(slide, canvas, ctx);
-        
-        // Export individual panels
-        if (slideCount > 1) {
-          let panelIndex = 0;
-          for (let row = 0; row < config.rows; row++) {
-            for (let col = 0; col < config.cols; col++) {
-              if (panelIndex >= slideCount) break;
-              
-              const panelCanvas = document.createElement('canvas');
-              panelCanvas.width = panelWidth;
-              panelCanvas.height = panelHeight;
-              const panelCtx = panelCanvas.getContext('2d');
-              
-              // Draw panel portion
-              panelCtx.drawImage(
-                canvas,
-                col * panelWidth,
-                row * panelHeight,
-                panelWidth,
-                panelHeight,
-                0,
-                0,
-                panelWidth,
-                panelHeight
-              );
-              
-              // Save panel
-              const blob = await new Promise(resolve => panelCanvas.toBlob(resolve, 'image/png'));
-              const buffer = await blob.arrayBuffer();
-              await ipcRenderer.invoke('save-image', {
-                path: `${result}/slide_${panelIndex + 1}.png`,
-                buffer: buffer
-              });
-              
-              panelIndex++;
-            }
-          }
-        } else {
-          // Single slide export
-          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      // For multi-panel exports we render a single combined canvas sized to (singlePanelSize * cols) x (singlePanelSize * rows)
+      statusText.textContent = `Exporting ${slideCount} panels...`;
+      progressBar.style.width = `0%`;
+
+      const combinedWidth = singlePanelSize * cols;
+      const combinedHeight = singlePanelSize * rows;
+
+      // Render the combined slide (there is only one slide in this design)
+      const slide = this.slides[0];
+      const canvas = document.createElement('canvas');
+      canvas.width = combinedWidth;
+      canvas.height = combinedHeight;
+      const ctx = canvas.getContext('2d');
+
+      await this.renderSlideToCanvas(slide, canvas, ctx);
+
+      // Export panels by cropping the combined canvas
+      let panelIndex = 0;
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          panelIndex++;
+          statusText.textContent = `Exporting panel ${panelIndex} of ${slideCount}...`;
+          progressBar.style.width = `${(panelIndex / slideCount) * 100}%`;
+
+          const panelCanvas = document.createElement('canvas');
+          panelCanvas.width = singlePanelSize;
+          panelCanvas.height = singlePanelSize;
+          const panelCtx = panelCanvas.getContext('2d');
+
+          panelCtx.drawImage(
+            canvas,
+            col * singlePanelSize,
+            row * singlePanelSize,
+            singlePanelSize,
+            singlePanelSize,
+            0,
+            0,
+            singlePanelSize,
+            singlePanelSize
+          );
+
+          const blob = await new Promise(resolve => panelCanvas.toBlob(resolve, 'image/png'));
           const buffer = await blob.arrayBuffer();
           await ipcRenderer.invoke('save-image', {
-            path: `${result}/slide_1.png`,
+            path: `${result}/slide_${panelIndex}.png`,
             buffer: buffer
           });
         }
