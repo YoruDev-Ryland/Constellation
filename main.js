@@ -172,6 +172,16 @@ ipcMain.handle('select-directory', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
+ipcMain.handle('save-image', async (event, { path: filePath, buffer }) => {
+  try {
+    await fs.writeFile(filePath, Buffer.from(buffer));
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving image:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('scan-directory', async (event, dirPath) => {
   try {
     const settings = store.get('settings', {});

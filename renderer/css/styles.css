@@ -213,7 +213,9 @@ body {
 /* Main Content */
 .main-content {
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* let inner views manage their own scrolling */
   /*padding: 32px;*/
 }
 
@@ -222,7 +224,13 @@ body {
 }
 
 .view.active {
-  display: block;
+  /* Make the active view a flex column so header and tool area can be anchored
+     and the inner tool content can flex to fill remaining space without causing
+     the main page to scroll. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
 .content-header {
@@ -2647,6 +2655,17 @@ body.setup-page {
 }
 
 .tool-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* allow children to shrink properly inside flex containers */
+}
+
+.tool-content-wrapper > div {
+  /* The immediate child (tool container) should fill the available area */
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .tool-card {

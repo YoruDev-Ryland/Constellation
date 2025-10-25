@@ -59,5 +59,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
-  onUpdaterMessage: (callback) => ipcRenderer.on('updater-message', (event, message) => callback(message))
+  onUpdaterMessage: (callback) => ipcRenderer.on('updater-message', (event, message) => callback(message)),
+  
+  // Image export
+  saveImageBuffer: (data) => ipcRenderer.invoke('save-image', data)
 });

@@ -10,17 +10,24 @@ class InstagramPostCreator {
     this.isResizing = false;
     this.dragOffset = { x: 0, y: 0 };
     this.resizeHandle = null;
+    this.aspectRatioLocked = true; // Default to locked
+    this.isPanning = false;
+    this.panStartX = 0;
+    this.panStartY = 0;
+    this.panOffsetX = 0;
+    this.panOffsetY = 0;
+    this.currentZoom = 1;
     this.panelConfig = {
       1: { rows: 1, cols: 1 },
       2: { rows: 1, cols: 2 },
       3: { rows: 1, cols: 3 },
-      4: { rows: 2, cols: 2 },
-      5: { rows: 2, cols: 3 },
-      6: { rows: 2, cols: 3 },
-      7: { rows: 3, cols: 3 },
-      8: { rows: 3, cols: 3 },
-      9: { rows: 3, cols: 3 },
-      10: { rows: 2, cols: 5 }
+      4: { rows: 1, cols: 4 },
+      5: { rows: 1, cols: 5 },
+      6: { rows: 1, cols: 6 },
+      7: { rows: 1, cols: 7 },
+      8: { rows: 1, cols: 8 },
+      9: { rows: 1, cols: 9 },
+      10: { rows: 1, cols: 10 }
     };
     
     this.init();
@@ -30,6 +37,8 @@ class InstagramPostCreator {
     this.container.innerHTML = this.createHTML();
     this.setupEventListeners();
     this.initializeSlides(1);
+    // Ensure initial transform is applied
+    requestAnimationFrame(() => this.applyCanvasTransform());
   }
 
   createHTML() {
@@ -83,7 +92,7 @@ class InstagramPostCreator {
 
         <!-- Main Layout -->
         <div class="ipc-main-layout">
-          <!-- Left Panel - Image Library -->
+          <!-- Top Panel - Image Library -->
           <div class="ipc-panel ipc-panel-left">
             <div class="ipc-panel-header">
               <h3>Images</h3>
@@ -92,23 +101,19 @@ class InstagramPostCreator {
               </button>
             </div>
             
-            <div class="ipc-image-library" id="imageLibrary">
+            <div class="ipc-image-library">
               <div class="ipc-drop-zone" id="dropZone">
                 <i class="fas fa-cloud-upload-alt"></i>
                 <p>Drop images here</p>
-                <span>or click the + button to browse</span>
+                <span>or click + to browse</span>
                 <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
               </div>
+              <div class="ipc-image-list" id="imageList"></div>
             </div>
-            
-            <div class="ipc-image-list" id="imageList"></div>
           </div>
 
           <!-- Center - Canvas Area -->
           <div class="ipc-panel ipc-panel-center">
-            <!-- Slide Navigation -->
-            <div class="ipc-slide-nav" id="slideNav"></div>
-            
             <!-- Canvas Container -->
             <div class="ipc-canvas-container">
               <div class="ipc-canvas-wrapper" id="canvasWrapper">
@@ -138,11 +143,22 @@ class InstagramPostCreator {
                 <button class="ipc-btn-icon" id="actualSizeBtn" title="Actual Size">
                   <i class="fas fa-expand"></i>
                 </button>
+                
+                <div class="ipc-separator"></div>
+                
+                <label class="ipc-toggle">
+                  <input type="checkbox" id="gridToggle">
+                  <span>Grid</span>
+                </label>
+                <label class="ipc-toggle">
+                  <input type="checkbox" id="snapToggle">
+                  <span>Snap</span>
+                </label>
               </div>
             </div>
           </div>
 
-          <!-- Right Panel - Properties -->
+          <!-- Bottom Panel - Properties -->
           <div class="ipc-panel ipc-panel-right">
             <div class="ipc-panel-header">
               <h3>Properties</h3>
@@ -151,7 +167,7 @@ class InstagramPostCreator {
             <div class="ipc-properties" id="properties">
               <div class="ipc-no-selection">
                 <i class="fas fa-mouse-pointer"></i>
-                <p>Select an image to edit properties</p>
+                <p>Select an image to edit</p>
               </div>
               
               <div class="ipc-image-properties" id="imageProperties" style="display: none;">
@@ -169,6 +185,8 @@ class InstagramPostCreator {
                   </div>
                 </div>
                 
+                <div class="ipc-property-divider"></div>
+                
                 <div class="ipc-property-group">
                   <label>Size</label>
                   <div class="ipc-property-row">
@@ -180,11 +198,13 @@ class InstagramPostCreator {
                       <label>H</label>
                       <input type="number" id="height" class="ipc-number-input" value="100">
                     </div>
-                    <button class="ipc-btn-icon" id="lockAspectBtn" title="Lock Aspect Ratio">
+                    <button class="ipc-btn-icon" id="lockAspectBtn" title="Lock Aspect">
                       <i class="fas fa-link"></i>
                     </button>
                   </div>
                 </div>
+                
+                <div class="ipc-property-divider"></div>
                 
                 <div class="ipc-property-group">
                   <label>Rotation</label>
@@ -194,6 +214,8 @@ class InstagramPostCreator {
                     <span>°</span>
                   </div>
                 </div>
+                
+                <div class="ipc-property-divider"></div>
                 
                 <div class="ipc-property-group">
                   <label>Opacity</label>
@@ -206,50 +228,27 @@ class InstagramPostCreator {
                 
                 <div class="ipc-property-divider"></div>
                 
-                <div class="ipc-property-group">
-                  <label>Layer Order</label>
-                  <div class="ipc-button-row">
-                    <button class="ipc-btn ipc-btn-secondary" id="bringToFrontBtn">
-                      <i class="fas fa-layer-group"></i> To Front
-                    </button>
-                    <button class="ipc-btn ipc-btn-secondary" id="sendToBackBtn">
-                      <i class="fas fa-layer-group"></i> To Back
-                    </button>
-                  </div>
-                </div>
-                
-                <div class="ipc-property-group">
-                  <label>Quick Actions</label>
-                  <div class="ipc-button-row">
-                    <button class="ipc-btn ipc-btn-secondary" id="flipHorizontalBtn">
-                      <i class="fas fa-arrows-alt-h"></i> Flip H
-                    </button>
-                    <button class="ipc-btn ipc-btn-secondary" id="flipVerticalBtn">
-                      <i class="fas fa-arrows-alt-v"></i> Flip V
-                    </button>
-                  </div>
-                  <div class="ipc-button-row">
-                    <button class="ipc-btn ipc-btn-secondary" id="resetTransformBtn">
-                      <i class="fas fa-undo"></i> Reset
-                    </button>
-                    <button class="ipc-btn ipc-btn-danger" id="deleteImageBtn">
-                      <i class="fas fa-trash"></i> Delete
-                    </button>
-                  </div>
+                <div class="ipc-button-row">
+                  <button class="ipc-btn ipc-btn-secondary" id="flipHorizontalBtn" title="Flip Horizontal">
+                    <i class="fas fa-arrows-alt-h"></i>
+                  </button>
+                  <button class="ipc-btn ipc-btn-secondary" id="flipVerticalBtn" title="Flip Vertical">
+                    <i class="fas fa-arrows-alt-v"></i>
+                  </button>
+                  <button class="ipc-btn ipc-btn-secondary" id="bringToFrontBtn" title="Bring to Front">
+                    <i class="fas fa-layer-group"></i>
+                  </button>
+                  <button class="ipc-btn ipc-btn-secondary" id="sendToBackBtn" title="Send to Back">
+                    <i class="fas fa-level-down-alt"></i>
+                  </button>
+                  <button class="ipc-btn ipc-btn-secondary" id="resetTransformBtn" title="Reset">
+                    <i class="fas fa-undo"></i>
+                  </button>
+                  <button class="ipc-btn ipc-btn-danger" id="deleteImageBtn" title="Delete">
+                    <i class="fas fa-trash"></i>
+                  </button>
                 </div>
               </div>
-            </div>
-            
-            <!-- Grid Overlay Toggle -->
-            <div class="ipc-panel-footer">
-              <label class="ipc-toggle">
-                <input type="checkbox" id="gridToggle">
-                <span>Show Grid</span>
-              </label>
-              <label class="ipc-toggle">
-                <input type="checkbox" id="snapToggle">
-                <span>Snap to Grid</span>
-              </label>
             </div>
           </div>
         </div>
@@ -338,6 +337,7 @@ class InstagramPostCreator {
     const zoomOutBtn = document.getElementById('zoomOutBtn');
     const fitToViewBtn = document.getElementById('fitToViewBtn');
     const actualSizeBtn = document.getElementById('actualSizeBtn');
+    const canvasContainer = document.getElementById('canvasWrapper').parentElement;
     
     zoomSlider.addEventListener('input', (e) => {
       const zoom = e.target.value;
@@ -368,8 +368,102 @@ class InstagramPostCreator {
     actualSizeBtn.addEventListener('click', () => {
       zoomSlider.value = 100;
       zoomValue.textContent = '100%';
+      this.panOffsetX = 0;
+      this.panOffsetY = 0;
       this.setZoom(1);
     });
+    
+    // Mouse wheel zoom on canvas background
+    canvasContainer.addEventListener('wheel', (e) => {
+      const target = e.target;
+      
+      // Check if we're over an image
+      if (target.classList.contains('ipc-canvas-image') || target.closest('.ipc-canvas-image')) {
+        // Zoom the image
+        e.preventDefault();
+        const img = target.classList.contains('ipc-canvas-image') ? target : target.closest('.ipc-canvas-image');
+        this.handleImageWheel(e, img);
+      } else if (target.classList.contains('ipc-canvas-container') || 
+                 target.classList.contains('ipc-canvas-wrapper') ||
+                 target.classList.contains('ipc-canvas') ||
+                 target.classList.contains('ipc-slide')) {
+        // Zoom the canvas
+        e.preventDefault();
+        this.handleCanvasWheel(e);
+      }
+    }, { passive: false });
+    
+    // Middle mouse button panning
+    canvasContainer.addEventListener('mousedown', (e) => {
+      if (e.button === 1) { // Middle mouse button
+        e.preventDefault();
+        this.isPanning = true;
+        this.panStartX = e.clientX;
+        this.panStartY = e.clientY;
+        canvasContainer.classList.add('panning');
+      }
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (this.isPanning) {
+        e.preventDefault();
+        const dx = e.clientX - this.panStartX;
+        const dy = e.clientY - this.panStartY;
+        this.panStartX = e.clientX;
+        this.panStartY = e.clientY;
+        this.panOffsetX += dx;
+        this.panOffsetY += dy;
+        this.applyCanvasTransform();
+      }
+    });
+    
+    document.addEventListener('mouseup', (e) => {
+      if (e.button === 1 && this.isPanning) {
+        this.isPanning = false;
+        canvasContainer.classList.remove('panning');
+      }
+    });
+  }
+  
+  handleCanvasWheel(e) {
+    const delta = e.deltaY > 0 ? -5 : 5;
+    const currentZoom = parseInt(document.getElementById('zoomSlider').value);
+    const newZoom = Math.max(25, Math.min(150, currentZoom + delta));
+    
+    document.getElementById('zoomSlider').value = newZoom;
+    document.getElementById('zoomValue').textContent = `${newZoom}%`;
+    this.setZoom(newZoom / 100);
+  }
+  
+  handleImageWheel(e, img) {
+    if (!this.selectedImage || this.selectedImage !== img) {
+      this.selectImage(img);
+    }
+    
+    const delta = e.deltaY > 0 ? -10 : 10;
+    const currentWidth = parseInt(img.style.width);
+    const currentHeight = parseInt(img.style.height);
+    const aspectRatio = parseFloat(img.dataset.originalAspectRatio) || (currentWidth / currentHeight);
+    
+    const newWidth = Math.max(50, currentWidth + delta);
+    const newHeight = this.aspectRatioLocked ? newWidth / aspectRatio : Math.max(50, currentHeight + delta);
+    
+    // Center the resize
+    const widthDiff = newWidth - currentWidth;
+    const heightDiff = newHeight - currentHeight;
+    const newLeft = parseInt(img.style.left) - widthDiff / 2;
+    const newTop = parseInt(img.style.top) - heightDiff / 2;
+    
+    img.style.width = `${newWidth}px`;
+    img.style.height = `${newHeight}px`;
+    img.style.left = `${newLeft}px`;
+    img.style.top = `${newTop}px`;
+    
+    // Update properties panel
+    document.getElementById('width').value = Math.round(newWidth);
+    document.getElementById('height').value = Math.round(newHeight);
+    document.getElementById('posX').value = Math.round(newLeft);
+    document.getElementById('posY').value = Math.round(newTop);
   }
 
   setupPropertiesPanel() {
@@ -475,6 +569,16 @@ class InstagramPostCreator {
         this.selectedImage.style.zIndex = 1;
       }
     });
+    
+    // Lock aspect ratio button
+    const lockAspectBtn = document.getElementById('lockAspectBtn');
+    lockAspectBtn.addEventListener('click', () => {
+      this.aspectRatioLocked = !this.aspectRatioLocked;
+      lockAspectBtn.innerHTML = this.aspectRatioLocked 
+        ? '<i class="fas fa-link"></i>' 
+        : '<i class="fas fa-unlink"></i>';
+      lockAspectBtn.title = this.aspectRatioLocked ? 'Unlock Aspect' : 'Lock Aspect';
+    });
   }
 
   handleFileSelect(files, addToCanvas = false) {
@@ -536,40 +640,75 @@ class InstagramPostCreator {
   }
 
   addImageToCanvas(imageData, slideElement) {
-    const img = document.createElement('div');
-    img.className = 'ipc-canvas-image';
-    img.dataset.imageId = imageData.id;
-    img.dataset.scaleX = '1';
-    img.dataset.scaleY = '1';
-    img.style.backgroundImage = `url(${imageData.src})`;
-    img.style.width = '200px';
-    img.style.height = '200px';
-    img.style.left = '50px';
-    img.style.top = '50px';
-    img.style.zIndex = this.getMaxZIndex() + 1;
+    // Create an image element to get actual dimensions
+    const tempImg = new Image();
+    tempImg.src = imageData.src;
     
-    // Add resize handles
-    const handles = ['nw', 'ne', 'sw', 'se'];
-    handles.forEach(position => {
-      const handle = document.createElement('div');
-      handle.className = `ipc-resize-handle ipc-resize-${position}`;
-      handle.dataset.position = position;
-      img.appendChild(handle);
-    });
-    
-    // Add rotation handle
-    const rotateHandle = document.createElement('div');
-    rotateHandle.className = 'ipc-rotate-handle';
-    rotateHandle.innerHTML = '<i class="fas fa-sync-alt"></i>';
-    img.appendChild(rotateHandle);
-    
-    slideElement.appendChild(img);
-    
-    // Set up image interactions
-    this.setupImageInteractions(img);
-    
-    // Select the newly added image
-    this.selectImage(img);
+    tempImg.onload = () => {
+      const img = document.createElement('div');
+      img.className = 'ipc-canvas-image';
+      img.dataset.imageId = imageData.id;
+      img.dataset.scaleX = '1';
+      img.dataset.scaleY = '1';
+      img.style.backgroundImage = `url(${imageData.src})`;
+      
+      // Calculate size preserving aspect ratio, max 400px on longest side
+      const maxSize = 400;
+      let width = tempImg.width;
+      let height = tempImg.height;
+      
+      if (width > height) {
+        if (width > maxSize) {
+          height = (height * maxSize) / width;
+          width = maxSize;
+        }
+      } else {
+        if (height > maxSize) {
+          width = (width * maxSize) / height;
+          height = maxSize;
+        }
+      }
+      
+      img.style.width = `${width}px`;
+      img.style.height = `${height}px`;
+      img.dataset.originalAspectRatio = (width / height).toString();
+      
+      img.style.left = '50px';
+      img.style.top = '50px';
+      img.style.zIndex = this.getMaxZIndex() + 1;
+      
+      // Add corner resize handles
+      const cornerHandles = ['nw', 'ne', 'sw', 'se'];
+      cornerHandles.forEach(position => {
+        const handle = document.createElement('div');
+        handle.className = `ipc-resize-handle ipc-resize-${position}`;
+        handle.dataset.position = position;
+        img.appendChild(handle);
+      });
+      
+      // Add side resize handles
+      const sideHandles = ['n', 'e', 's', 'w'];
+      sideHandles.forEach(position => {
+        const handle = document.createElement('div');
+        handle.className = `ipc-resize-handle ipc-resize-${position}`;
+        handle.dataset.position = position;
+        img.appendChild(handle);
+      });
+      
+      // Add rotation handle
+      const rotateHandle = document.createElement('div');
+      rotateHandle.className = 'ipc-rotate-handle';
+      rotateHandle.innerHTML = '<i class="fas fa-sync-alt"></i>';
+      img.appendChild(rotateHandle);
+      
+      slideElement.appendChild(img);
+      
+      // Set up image interactions
+      this.setupImageInteractions(img);
+      
+      // Select the newly added image
+      this.selectImage(img);
+    };
   }
 
   setupImageInteractions(img) {
@@ -715,6 +854,7 @@ class InstagramPostCreator {
     const startHeight = parseInt(img.style.height);
     const startLeft = parseInt(img.style.left);
     const startTop = parseInt(img.style.top);
+    const aspectRatio = parseFloat(img.dataset.originalAspectRatio) || (startWidth / startHeight);
     
     const mouseMoveHandler = (e) => {
       if (!this.isResizing) return;
@@ -727,41 +867,105 @@ class InstagramPostCreator {
       let newLeft = startLeft;
       let newTop = startTop;
       
+      // Handle different resize directions
       switch(position) {
+        // Corner handles
         case 'se':
           newWidth = startWidth + deltaX;
-          newHeight = startHeight + deltaY;
+          if (this.aspectRatioLocked) {
+            newHeight = newWidth / aspectRatio;
+          } else {
+            newHeight = startHeight + deltaY;
+          }
           break;
         case 'sw':
           newWidth = startWidth - deltaX;
-          newHeight = startHeight + deltaY;
+          if (this.aspectRatioLocked) {
+            newHeight = newWidth / aspectRatio;
+          } else {
+            newHeight = startHeight + deltaY;
+          }
           newLeft = startLeft + deltaX;
           break;
         case 'ne':
           newWidth = startWidth + deltaX;
-          newHeight = startHeight - deltaY;
-          newTop = startTop + deltaY;
+          if (this.aspectRatioLocked) {
+            newHeight = newWidth / aspectRatio;
+            newTop = startTop - (newHeight - startHeight);
+          } else {
+            newHeight = startHeight - deltaY;
+            newTop = startTop + deltaY;
+          }
           break;
         case 'nw':
           newWidth = startWidth - deltaX;
-          newHeight = startHeight - deltaY;
-          newLeft = startLeft + deltaX;
-          newTop = startTop + deltaY;
+          if (this.aspectRatioLocked) {
+            newHeight = newWidth / aspectRatio;
+            newLeft = startLeft + deltaX;
+            newTop = startTop - (newHeight - startHeight);
+          } else {
+            newHeight = startHeight - deltaY;
+            newLeft = startLeft + deltaX;
+            newTop = startTop + deltaY;
+          }
+          break;
+          
+        // Side handles
+        case 'n':
+          if (this.aspectRatioLocked) {
+            newHeight = startHeight - deltaY;
+            newWidth = newHeight * aspectRatio;
+            newTop = startTop + deltaY;
+            newLeft = startLeft - (newWidth - startWidth) / 2;
+          } else {
+            newHeight = startHeight - deltaY;
+            newTop = startTop + deltaY;
+          }
+          break;
+        case 's':
+          if (this.aspectRatioLocked) {
+            newHeight = startHeight + deltaY;
+            newWidth = newHeight * aspectRatio;
+            newLeft = startLeft - (newWidth - startWidth) / 2;
+          } else {
+            newHeight = startHeight + deltaY;
+          }
+          break;
+        case 'e':
+          if (this.aspectRatioLocked) {
+            newWidth = startWidth + deltaX;
+            newHeight = newWidth / aspectRatio;
+            newTop = startTop - (newHeight - startHeight) / 2;
+          } else {
+            newWidth = startWidth + deltaX;
+          }
+          break;
+        case 'w':
+          if (this.aspectRatioLocked) {
+            newWidth = startWidth - deltaX;
+            newHeight = newWidth / aspectRatio;
+            newLeft = startLeft + deltaX;
+            newTop = startTop - (newHeight - startHeight) / 2;
+          } else {
+            newWidth = startWidth - deltaX;
+            newLeft = startLeft + deltaX;
+          }
           break;
       }
       
+      // Apply minimum size constraint
       if (newWidth > 50) {
         img.style.width = `${newWidth}px`;
         img.style.left = `${newLeft}px`;
-        document.getElementById('width').value = newWidth;
-        document.getElementById('posX').value = newLeft;
+        document.getElementById('width').value = Math.round(newWidth);
+        document.getElementById('posX').value = Math.round(newLeft);
       }
       
       if (newHeight > 50) {
         img.style.height = `${newHeight}px`;
         img.style.top = `${newTop}px`;
-        document.getElementById('height').value = newHeight;
-        document.getElementById('posY').value = newTop;
+        document.getElementById('height').value = Math.round(newHeight);
+        document.getElementById('posY').value = Math.round(newTop);
       }
     };
     
@@ -800,15 +1004,13 @@ class InstagramPostCreator {
 
   initializeSlides(count) {
     const canvas = document.getElementById('mainCanvas');
-    const slideNav = document.getElementById('slideNav');
 
-  // Preserve existing images if any
-  const existingImages = Array.from(canvas.querySelectorAll('.ipc-canvas-image'));
+    // Preserve existing images if any
+    const existingImages = Array.from(canvas.querySelectorAll('.ipc-canvas-image'));
 
-  // Clear existing slides (we'll use a single combined slide)
-  canvas.innerHTML = '';
-  slideNav.innerHTML = '';
-  this.slides = [];
+    // Clear existing slides (we'll use a single combined slide)
+    canvas.innerHTML = '';
+    this.slides = [];
 
     // Determine panel grid for the requested count
     const config = this.panelConfig[count] || { rows: 1, cols: count };
@@ -851,6 +1053,9 @@ class InstagramPostCreator {
 
     // Update the on-screen canvas dimensions to represent the combined panels
     this.updateCanvasDisplay();
+    
+    // Auto-fit canvas to view after layout changes
+    setTimeout(() => this.fitToView(), 100);
   }
 
   updateCanvasDisplay() {
@@ -896,14 +1101,24 @@ class InstagramPostCreator {
   }
 
   setZoom(scale) {
-    const canvas = document.getElementById('mainCanvas');
-    canvas.style.transform = `scale(${scale})`;
+    this.currentZoom = scale;
+    this.applyCanvasTransform();
+  }
+
+  applyCanvasTransform() {
+    const wrapper = document.getElementById('canvasWrapper');
+    if (!wrapper) return;
+    
+    // Apply both pan offset and zoom using transform
+    wrapper.style.transform = `translate(${this.panOffsetX}px, ${this.panOffsetY}px) scale(${this.currentZoom})`;
   }
 
   fitToView() {
-    const wrapper = document.getElementById('canvasWrapper');
+    const container = document.querySelector('.ipc-canvas-container');
     const canvas = document.getElementById('mainCanvas');
-    const wrapperRect = wrapper.getBoundingClientRect();
+    if (!container || !canvas) return;
+    
+    const containerRect = container.getBoundingClientRect();
     const singlePanelSize = parseInt(document.getElementById('canvasSize').value) || 1080;
     const cols = this.canvasCols || 1;
     const rows = this.canvasRows || 1;
@@ -911,13 +1126,17 @@ class InstagramPostCreator {
     const canvasWidth = singlePanelSize * cols;
     const canvasHeight = singlePanelSize * rows;
 
-    const scaleX = wrapperRect.width / canvasWidth;
-    const scaleY = wrapperRect.height / canvasHeight;
+    const scaleX = containerRect.width / canvasWidth;
+    const scaleY = containerRect.height / canvasHeight;
     const scale = Math.min(scaleX, scaleY, 1) * 0.9; // 90% to leave some padding
 
     const zoomPercent = Math.round(scale * 100);
     document.getElementById('zoomSlider').value = zoomPercent;
     document.getElementById('zoomValue').textContent = `${zoomPercent}%`;
+    
+    // Reset pan offset when fitting to view
+    this.panOffsetX = 0;
+    this.panOffsetY = 0;
     this.setZoom(scale);
   }
 
@@ -938,7 +1157,6 @@ class InstagramPostCreator {
   }
 
   async exportSlides() {
-    const { ipcRenderer } = require('electron');
     const slideCount = this.panelCount || this.slides.length;
     const singlePanelSize = parseInt(document.getElementById('canvasSize').value);
     const cols = this.canvasCols || 1;
@@ -964,7 +1182,7 @@ class InstagramPostCreator {
     
     try {
       // Ask user for save location
-      const result = await ipcRenderer.invoke('select-directory');
+      const result = await window.electronAPI.selectDirectory();
       if (!result) {
         modal.remove();
         return;
@@ -1013,7 +1231,7 @@ class InstagramPostCreator {
 
           const blob = await new Promise(resolve => panelCanvas.toBlob(resolve, 'image/png'));
           const buffer = await blob.arrayBuffer();
-          await ipcRenderer.invoke('save-image', {
+          await window.electronAPI.saveImageBuffer({
             path: `${result}/slide_${panelIndex}.png`,
             buffer: buffer
           });
