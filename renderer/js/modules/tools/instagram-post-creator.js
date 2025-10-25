@@ -17,6 +17,18 @@ class InstagramPostCreator {
     this.panOffsetX = 0;
     this.panOffsetY = 0;
     this.currentZoom = 1;
+  // Panel aspect ratio (per-panel width:height)
+  this.panelAspect = { w: 1, h: 1 }; // 1:1 default
+  // Scheduling helpers to keep wheel handlers lightweight
+  this._wheelRaf = null;
+  this._wheelPending = null; // { type: 'image'|'canvas', deltaY: number, img?: HTMLElement }
+    this.wheelUpdateTimeout = null; // For debouncing property panel updates
+  // Live scale state (smooth scaling via transform, commit after gesture ends)
+  this.liveScaleActive = null; // HTMLElement being scaled
+  this.liveScaleFactor = 1;
+  this.liveScaleBase = null; // { w,h,left,top }
+  this.liveScaleCommitTimer = null;
+  this.wheelScaleStep = 0.09; // ~9% per notch (~3x faster feel)
     this.panelConfig = {
       1: { rows: 1, cols: 1 },
       2: { rows: 1, cols: 2 },
@@ -31,6 +43,196 @@ class InstagramPostCreator {
     };
     
     this.init();
+  }
+
+  startCroppingResize(e, img, position) {
+    const bmp = img.querySelector('img.ipc-canvas-bitmap');
+    if (!bmp) return;
+    this.isResizing = true;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const rect = img.getBoundingClientRect();
+    const width = rect.width || parseInt(img.style.width) || 1;
+    const height = rect.height || parseInt(img.style.height) || 1;
+    const startCrop = {
+      top: parseFloat(bmp.dataset.cropTopPct || '0'),
+      right: parseFloat(bmp.dataset.cropRightPct || '0'),
+      bottom: parseFloat(bmp.dataset.cropBottomPct || '0'),
+      left: parseFloat(bmp.dataset.cropLeftPct || '0')
+    };
+    const minPx = 10; // minimum visible size
+    const minW = minPx / width;
+    const minH = minPx / height;
+
+    const onMove = (ev) => {
+      if (!this.isResizing) return;
+      // Absolute pointer mapping so directions feel natural
+      const mx = ev.clientX - rect.left;
+      const my = ev.clientY - rect.top;
+      const px = mx / width; // 0..1 from left
+      const py = my / height; // 0..1 from top
+      let top = startCrop.top;
+      let right = startCrop.right;
+      let bottom = startCrop.bottom;
+      let left = startCrop.left;
+
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const clampLR = (l, r) => {
+        const total = l + r;
+        if (total > 1 - minW) {
+          const excess = total - (1 - minW);
+          // reduce the one that was changed last (approx by position)
+          if (position.includes('w')) l -= excess; else r -= excess;
+        }
+        return [clamp(l,0,1), clamp(r,0,1)];
+      };
+      const clampTB = (t, b) => {
+        const total = t + b;
+        if (total > 1 - minH) {
+          const excess = total - (1 - minH);
+          if (position.includes('n')) t -= excess; else b -= excess;
+        }
+        return [clamp(t,0,1), clamp(b,0,1)];
+      };
+
+      switch (position) {
+        case 'e':
+          right = clamp(1 - px, 0, 1);
+          [left, right] = clampLR(left, right);
+          break;
+        case 'w':
+          left = clamp(px, 0, 1);
+          [left, right] = clampLR(left, right);
+          break;
+        case 's':
+          bottom = clamp(1 - py, 0, 1);
+          [top, bottom] = clampTB(top, bottom);
+          break;
+        case 'n':
+          top = clamp(py, 0, 1);
+          [top, bottom] = clampTB(top, bottom);
+          break;
+        case 'se':
+          right = clamp(1 - px, 0, 1);
+          bottom = clamp(1 - py, 0, 1);
+          [left, right] = clampLR(left, right);
+          [top, bottom] = clampTB(top, bottom);
+          break;
+        case 'sw':
+          left = clamp(px, 0, 1);
+          bottom = clamp(1 - py, 0, 1);
+          [left, right] = clampLR(left, right);
+          [top, bottom] = clampTB(top, bottom);
+          break;
+        case 'ne':
+          right = clamp(1 - px, 0, 1);
+          top = clamp(py, 0, 1);
+          [left, right] = clampLR(left, right);
+          [top, bottom] = clampTB(top, bottom);
+          break;
+        case 'nw':
+          left = clamp(px, 0, 1);
+          top = clamp(py, 0, 1);
+          [left, right] = clampLR(left, right);
+          [top, bottom] = clampTB(top, bottom);
+          break;
+      }
+
+      bmp.dataset.cropTopPct = String(top);
+      bmp.dataset.cropRightPct = String(right);
+      bmp.dataset.cropBottomPct = String(bottom);
+      bmp.dataset.cropLeftPct = String(left);
+      bmp.style.clipPath = `inset(${top*100}% ${right*100}% ${bottom*100}% ${left*100}%)`;
+      this.updateCropHandles(img, {top,right,bottom,left});
+    };
+
+    const onUp = () => {
+      this.isResizing = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
+  // Update handle positions to align with current crop insets (fractions 0..1)
+  updateCropHandles(img, { top = 0, right = 0, bottom = 0, left = 0 } = {}) {
+    const pct = (v) => `${(v * 100).toFixed(4)}%`;
+    const cornerOffset = 7; // px (half of 14px)
+    const sideOffset = 4;   // px (half of 8px)
+
+    const setStyle = (el, styles) => {
+      if (!el) return;
+      // Clear first to avoid conflicting sides
+      el.style.top = '';
+      el.style.right = '';
+      el.style.bottom = '';
+      el.style.left = '';
+      Object.entries(styles).forEach(([k, v]) => el.style[k] = v);
+    };
+
+    // Corners
+    setStyle(img.querySelector('.ipc-resize-nw'), {
+      top: `calc(${pct(top)} - ${cornerOffset}px)`,
+      left: `calc(${pct(left)} - ${cornerOffset}px)`
+    });
+    setStyle(img.querySelector('.ipc-resize-ne'), {
+      top: `calc(${pct(top)} - ${cornerOffset}px)`,
+      right: `calc(${pct(right)} - ${cornerOffset}px)`
+    });
+    setStyle(img.querySelector('.ipc-resize-sw'), {
+      bottom: `calc(${pct(bottom)} - ${cornerOffset}px)`,
+      left: `calc(${pct(left)} - ${cornerOffset}px)`
+    });
+    setStyle(img.querySelector('.ipc-resize-se'), {
+      bottom: `calc(${pct(bottom)} - ${cornerOffset}px)`,
+      right: `calc(${pct(right)} - ${cornerOffset}px)`
+    });
+
+    // Sides
+    setStyle(img.querySelector('.ipc-resize-n'), {
+      top: `calc(${pct(top)} - ${sideOffset}px)`,
+      left: '50%'
+    });
+    setStyle(img.querySelector('.ipc-resize-s'), {
+      bottom: `calc(${pct(bottom)} - ${sideOffset}px)`,
+      left: '50%'
+    });
+    setStyle(img.querySelector('.ipc-resize-e'), {
+      right: `calc(${pct(right)} - ${sideOffset}px)`,
+      top: '50%'
+    });
+    setStyle(img.querySelector('.ipc-resize-w'), {
+      left: `calc(${pct(left)} - ${sideOffset}px)`,
+      top: '50%'
+    });
+
+    // Optionally align rotate handle to bottom-center of crop region
+    const rotate = img.querySelector('.ipc-rotate-handle');
+    if (rotate) {
+      const centerX = left + (1 - left - right) / 2; // fraction from left
+      setStyle(rotate, {
+        left: `calc(${pct(centerX)})`,
+        bottom: `calc(${pct(bottom)} - 35px)`
+      });
+      rotate.style.transform = 'translateX(-50%)';
+    }
+  }
+
+  // Clear any inline overrides we applied to handles when leaving crop mode
+  clearCropHandleOverrides(img) {
+    const handles = img.querySelectorAll('.ipc-resize-handle, .ipc-rotate-handle');
+    handles.forEach(h => {
+      h.style.top = '';
+      h.style.right = '';
+      h.style.bottom = '';
+      h.style.left = '';
+      // Reset transform for rotate handle (side handles rely on CSS translate)
+      if (h.classList.contains('ipc-rotate-handle')) {
+        h.style.transform = '';
+      }
+    });
   }
 
   init() {
@@ -66,18 +268,9 @@ class InstagramPostCreator {
             <div class="ipc-control-group">
               <label>Aspect Ratio</label>
               <select id="aspectRatio" class="ipc-select">
-                <option value="1:1">Square (1:1)</option>
-                <option value="4:5">Portrait (4:5)</option>
-                <option value="16:9">Landscape (16:9)</option>
-              </select>
-            </div>
-            
-            <div class="ipc-control-group">
-              <label>Canvas Size</label>
-              <select id="canvasSize" class="ipc-select">
-                <option value="1080">1080×1080</option>
-                <option value="1350">1350×1350</option>
-                <option value="2160">2160×2160</option>
+                <option value="1:1">Square (1:1) - 1080×1080</option>
+                <option value="4:5">Portrait (4:5) - 1080×1350</option>
+                <option value="16:9">Landscape (16:9) - 1080×608</option>
               </select>
             </div>
           </div>
@@ -244,6 +437,9 @@ class InstagramPostCreator {
                   <button class="ipc-btn ipc-btn-secondary" id="resetTransformBtn" title="Reset">
                     <i class="fas fa-undo"></i>
                   </button>
+                  <button class="ipc-btn ipc-btn-secondary" id="cropModeBtn" title="Crop Mode">
+                    <i class="fas fa-crop"></i>
+                  </button>
                   <button class="ipc-btn ipc-btn-danger" id="deleteImageBtn" title="Delete">
                     <i class="fas fa-trash"></i>
                   </button>
@@ -277,14 +473,58 @@ class InstagramPostCreator {
     // Canvas controls
     this.setupCanvasControls();
     
+    // Aspect ratio changes
+    const arSelect = document.getElementById('aspectRatio');
+    if (arSelect) {
+      arSelect.addEventListener('change', (e) => {
+        const val = e.target.value; // e.g., "1:1", "4:5", "16:9"
+        const [w, h] = val.split(':').map(Number);
+        if (w && h) {
+          // Store old canvas dimensions before changing aspect
+          const canvas = document.getElementById('mainCanvas');
+          const oldWidth = parseInt(canvas.style.width) || 1;
+          const oldHeight = parseInt(canvas.style.height) || 1;
+          
+          this.panelAspect = { w, h };
+          this.updateCanvasDisplay();
+          
+          // Get new canvas dimensions after aspect change
+          const newWidth = parseInt(canvas.style.width) || 1;
+          const newHeight = parseInt(canvas.style.height) || 1;
+          
+          // Scale all existing images to maintain their relative positions
+          const scaleX = newWidth / oldWidth;
+          const scaleY = newHeight / oldHeight;
+          
+          const images = canvas.querySelectorAll('.ipc-canvas-image');
+          images.forEach(img => {
+            const left = parseInt(img.style.left) || 0;
+            const top = parseInt(img.style.top) || 0;
+            const width = parseInt(img.style.width) || 1;
+            const height = parseInt(img.style.height) || 1;
+            
+            img.style.left = `${Math.round(left * scaleX)}px`;
+            img.style.top = `${Math.round(top * scaleY)}px`;
+            img.style.width = `${Math.round(width * scaleX)}px`;
+            img.style.height = `${Math.round(height * scaleY)}px`;
+          });
+          
+          // Update properties panel if an image is selected
+          if (this.selectedImage) {
+            this.updatePropertiesPanel(this.selectedImage);
+          }
+          
+          // refit to view after layout change
+          setTimeout(() => this.fitToView(), 50);
+        }
+      });
+    }
+
     // Export
     document.getElementById('exportBtn').addEventListener('click', () => this.exportSlides());
     
     // Properties panel
     this.setupPropertiesPanel();
-
-    // Update display when canvas size selection changes
-    document.getElementById('canvasSize').addEventListener('change', () => this.updateCanvasDisplay());
   }
 
   setupDragAndDrop() {
@@ -376,20 +616,21 @@ class InstagramPostCreator {
     // Mouse wheel zoom on canvas background
     canvasContainer.addEventListener('wheel', (e) => {
       const target = e.target;
-      
-      // Check if we're over an image
-      if (target.classList.contains('ipc-canvas-image') || target.closest('.ipc-canvas-image')) {
-        // Zoom the image
+      // Schedule heavy work in requestAnimationFrame to avoid long-running wheel handlers
+      if (target.classList && (target.classList.contains('ipc-canvas-image') || target.closest('.ipc-canvas-image'))) {
         e.preventDefault();
         const img = target.classList.contains('ipc-canvas-image') ? target : target.closest('.ipc-canvas-image');
-        this.handleImageWheel(e, img);
-      } else if (target.classList.contains('ipc-canvas-container') || 
-                 target.classList.contains('ipc-canvas-wrapper') ||
-                 target.classList.contains('ipc-canvas') ||
-                 target.classList.contains('ipc-slide')) {
-        // Zoom the canvas
+        this.queueWheel({ type: 'image', deltaY: e.deltaY, img });
+      } else if (
+        target.classList && (
+          target.classList.contains('ipc-canvas-container') ||
+          target.classList.contains('ipc-canvas-wrapper') ||
+          target.classList.contains('ipc-canvas') ||
+          target.classList.contains('ipc-slide')
+        )
+      ) {
         e.preventDefault();
-        this.handleCanvasWheel(e);
+        this.queueWheel({ type: 'canvas', deltaY: e.deltaY });
       }
     }, { passive: false });
     
@@ -425,8 +666,32 @@ class InstagramPostCreator {
     });
   }
   
+  // Queue wheel work to next animation frame to reduce handler time
+  queueWheel(job) {
+    // Keep only the latest pending job; wheel events can be very frequent
+    this._wheelPending = job;
+    if (this._wheelRaf) return;
+    this._wheelRaf = requestAnimationFrame(() => {
+      const j = this._wheelPending;
+      this._wheelPending = null;
+      this._wheelRaf = null;
+      if (!j) return;
+      if (j.type === 'image' && j.img) {
+        this.handleImageWheelDelta(j.deltaY, j.img);
+      } else if (j.type === 'canvas') {
+        this.handleCanvasWheelDelta(j.deltaY);
+      }
+    });
+  }
+
   handleCanvasWheel(e) {
-    const delta = e.deltaY > 0 ? -5 : 5;
+    // Backward-compat path; delegate to delta version
+    const delta = e.deltaY;
+    this.handleCanvasWheelDelta(delta);
+  }
+
+  handleCanvasWheelDelta(deltaY) {
+    const delta = deltaY > 0 ? -5 : 5;
     const currentZoom = parseInt(document.getElementById('zoomSlider').value);
     const newZoom = Math.max(25, Math.min(150, currentZoom + delta));
     
@@ -436,34 +701,97 @@ class InstagramPostCreator {
   }
   
   handleImageWheel(e, img) {
+    // Backward-compat path; delegate to delta version
+    this.handleImageWheelDelta(e.deltaY, img);
+  }
+
+  handleImageWheelDelta(deltaY, img) {
+    // Only select if not already selected (avoid expensive selection operations)
     if (!this.selectedImage || this.selectedImage !== img) {
       this.selectImage(img);
+      return; // Skip this wheel event after selection to avoid lag
     }
-    
-    const delta = e.deltaY > 0 ? -10 : 10;
-    const currentWidth = parseInt(img.style.width);
-    const currentHeight = parseInt(img.style.height);
-    const aspectRatio = parseFloat(img.dataset.originalAspectRatio) || (currentWidth / currentHeight);
-    
-    const newWidth = Math.max(50, currentWidth + delta);
-    const newHeight = this.aspectRatioLocked ? newWidth / aspectRatio : Math.max(50, currentHeight + delta);
-    
-    // Center the resize
-    const widthDiff = newWidth - currentWidth;
-    const heightDiff = newHeight - currentHeight;
-    const newLeft = parseInt(img.style.left) - widthDiff / 2;
-    const newTop = parseInt(img.style.top) - heightDiff / 2;
-    
+
+    // Start/continue live scaling via transform for smoothness; commit dimensions after idle
+    if (this.liveScaleActive !== img) {
+      this.beginLiveScale(img);
+    }
+
+    const sign = deltaY > 0 ? -1 : 1; // wheel up = zoom in
+    const step = 1 + this.wheelScaleStep * sign;
+    this.liveScaleFactor = Math.max(0.05, this.liveScaleFactor * step);
+
+    // Apply transform with rotation/flip + live scale
+    img.dataset.liveScale = String(this.liveScaleFactor);
+    this.applyComposedTransform(img);
+
+    // Schedule commit
+    this.scheduleLiveScaleCommit();
+  }
+
+  beginLiveScale(img) {
+    this.liveScaleActive = img;
+    this.liveScaleFactor = 1;
+    this.liveScaleBase = {
+      w: parseInt(img.style.width) || img.offsetWidth || 1,
+      h: parseInt(img.style.height) || img.offsetHeight || 1,
+      left: parseInt(img.style.left) || 0,
+      top: parseInt(img.style.top) || 0
+    };
+    img.classList.add('interacting');
+  }
+
+  scheduleLiveScaleCommit() {
+    if (this.liveScaleCommitTimer) clearTimeout(this.liveScaleCommitTimer);
+    this.liveScaleCommitTimer = setTimeout(() => this.commitLiveScale(), 140);
+  }
+
+  commitLiveScale() {
+    const img = this.liveScaleActive;
+    if (!img || !this.liveScaleBase) return;
+    const factor = this.liveScaleFactor;
+    const base = this.liveScaleBase;
+
+    const newWidth = Math.max(50, Math.round(base.w * factor));
+    const newHeight = Math.max(50, Math.round(base.h * factor));
+    const centerX = base.left + base.w / 2;
+    const centerY = base.top + base.h / 2;
+    const newLeft = Math.round(centerX - newWidth / 2);
+    const newTop = Math.round(centerY - newHeight / 2);
+
+    // Commit layout dimensions
     img.style.width = `${newWidth}px`;
     img.style.height = `${newHeight}px`;
     img.style.left = `${newLeft}px`;
     img.style.top = `${newTop}px`;
-    
-    // Update properties panel
-    document.getElementById('width').value = Math.round(newWidth);
-    document.getElementById('height').value = Math.round(newHeight);
-    document.getElementById('posX').value = Math.round(newLeft);
-    document.getElementById('posY').value = Math.round(newTop);
+
+    // Clear live scale and keep only rotation/flip transforms
+    img.dataset.liveScale = '1';
+    this.applyComposedTransform(img);
+
+    // Update properties panel once
+    const widthInput = document.getElementById('width');
+    const heightInput = document.getElementById('height');
+    const posXInput = document.getElementById('posX');
+    const posYInput = document.getElementById('posY');
+    if (widthInput) widthInput.value = newWidth;
+    if (heightInput) heightInput.value = newHeight;
+    if (posXInput) posXInput.value = newLeft;
+    if (posYInput) posYInput.value = newTop;
+
+    // Reset live state
+    this.liveScaleActive = null;
+    this.liveScaleFactor = 1;
+    this.liveScaleBase = null;
+    img.classList.remove('interacting');
+  }
+
+  applyComposedTransform(img) {
+    const rotation = document.getElementById('rotation').value;
+    const scaleX = img.dataset.scaleX || '1';
+    const scaleY = img.dataset.scaleY || '1';
+    const liveScale = img.dataset.liveScale ? parseFloat(img.dataset.liveScale) : 1;
+    img.style.transform = `rotate(${rotation}deg) scaleX(${scaleX}) scaleY(${scaleY}) scale(${liveScale})`;
   }
 
   setupPropertiesPanel() {
@@ -552,6 +880,32 @@ class InstagramPostCreator {
       }
     });
     
+    // Crop mode toggle
+    const cropBtn = document.getElementById('cropModeBtn');
+    cropBtn.addEventListener('click', () => {
+      if (!this.selectedImage) return;
+      this.isCropMode = !this.isCropMode;
+      cropBtn.classList.toggle('active', this.isCropMode);
+      this.selectedImage.classList.toggle('crop-mode', this.isCropMode);
+      // Ensure crop fields exist
+      const bmp = this.selectedImage.querySelector('img.ipc-canvas-bitmap');
+      if (!bmp) return;
+      ['cropTopPct','cropRightPct','cropBottomPct','cropLeftPct'].forEach(k => {
+        if (bmp.dataset[k] === undefined) bmp.dataset[k] = '0';
+      });
+      const top = parseFloat(bmp.dataset.cropTopPct||'0');
+      const right = parseFloat(bmp.dataset.cropRightPct||'0');
+      const bottom = parseFloat(bmp.dataset.cropBottomPct||'0');
+      const left = parseFloat(bmp.dataset.cropLeftPct||'0');
+      bmp.style.clipPath = (this.isCropMode || top||right||bottom||left) ?
+        `inset(${top*100}% ${right*100}% ${bottom*100}% ${left*100}%)` : 'none';
+      if (this.isCropMode) {
+        this.updateCropHandles(this.selectedImage, {top,right,bottom,left});
+      } else {
+        this.clearCropHandleOverrides(this.selectedImage);
+      }
+    });
+    
     document.getElementById('deleteImageBtn').addEventListener('click', () => {
       if (this.selectedImage) {
         this.deleteSelectedImage();
@@ -578,6 +932,15 @@ class InstagramPostCreator {
         ? '<i class="fas fa-link"></i>' 
         : '<i class="fas fa-unlink"></i>';
       lockAspectBtn.title = this.aspectRatioLocked ? 'Unlock Aspect' : 'Lock Aspect';
+      // Toggle how the bitmap fills the container
+      if (this.selectedImage) {
+        const bmp = this.selectedImage.querySelector('img.ipc-canvas-bitmap');
+        if (bmp) {
+          const fit = this.aspectRatioLocked ? 'contain' : 'fill';
+          bmp.style.objectFit = fit;
+          this.selectedImage.dataset.objectFit = fit;
+        }
+      }
     });
   }
 
@@ -586,19 +949,50 @@ class InstagramPostCreator {
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
-          const imageData = {
-            id: Date.now() + Math.random(),
-            src: e.target.result,
-            name: file.name,
-            size: this.formatFileSize(file.size)
+          const originalSrc = e.target.result;
+          const img = new Image();
+          img.onload = () => {
+            // Create a downscaled display proxy for very large images to keep interactions smooth
+            const MAX_DISPLAY_DIM = 4096; // cap the longest side for on-canvas preview
+            let displaySrc = originalSrc;
+            const { naturalWidth: ow, naturalHeight: oh } = img;
+            const maxDim = Math.max(ow, oh);
+            if (maxDim > MAX_DISPLAY_DIM) {
+              const scale = MAX_DISPLAY_DIM / maxDim;
+              const w = Math.round(ow * scale);
+              const h = Math.round(oh * scale);
+              const canvas = document.createElement('canvas');
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              // Use high quality scaling when available
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'high';
+              ctx.drawImage(img, 0, 0, w, h);
+              try {
+                // webp preserves alpha and compresses well
+                displaySrc = canvas.toDataURL('image/webp', 0.85);
+              } catch (_) {
+                displaySrc = canvas.toDataURL();
+              }
+            }
+
+            const imageData = {
+              id: Date.now() + Math.random(),
+              src: originalSrc, // keep full-res for export
+              displaySrc,       // use this for on-canvas rendering
+              name: file.name,
+              size: this.formatFileSize(file.size)
+            };
+
+            this.images.push(imageData);
+            this.addImageToLibrary(imageData);
+
+            if (addToCanvas && this.slides[this.currentSlide]) {
+              this.addImageToCanvas(imageData, this.slides[this.currentSlide]);
+            }
           };
-          
-          this.images.push(imageData);
-          this.addImageToLibrary(imageData);
-          
-          if (addToCanvas && this.slides[this.currentSlide]) {
-            this.addImageToCanvas(imageData, this.slides[this.currentSlide]);
-          }
+          img.src = originalSrc;
         };
         reader.readAsDataURL(file);
       }
@@ -617,7 +1011,7 @@ class InstagramPostCreator {
     imageItem.className = 'ipc-library-item';
     imageItem.dataset.imageId = imageData.id;
     imageItem.innerHTML = `
-      <img src="${imageData.src}" alt="${imageData.name}">
+      <img src="${imageData.displaySrc || imageData.src}" alt="${imageData.name}">
       <div class="ipc-library-item-info">
         <span class="ipc-library-item-name">${imageData.name}</span>
         <span class="ipc-library-item-size">${imageData.size}</span>
@@ -642,7 +1036,7 @@ class InstagramPostCreator {
   addImageToCanvas(imageData, slideElement) {
     // Create an image element to get actual dimensions
     const tempImg = new Image();
-    tempImg.src = imageData.src;
+    tempImg.src = imageData.displaySrc || imageData.src;
     
     tempImg.onload = () => {
       const img = document.createElement('div');
@@ -650,7 +1044,21 @@ class InstagramPostCreator {
       img.dataset.imageId = imageData.id;
       img.dataset.scaleX = '1';
       img.dataset.scaleY = '1';
-      img.style.backgroundImage = `url(${imageData.src})`;
+      // Create inner bitmap element for better compositing
+      const bitmap = document.createElement('img');
+      bitmap.className = 'ipc-canvas-bitmap';
+      bitmap.decoding = 'async';
+      bitmap.loading = 'eager';
+      bitmap.draggable = false;
+      bitmap.src = imageData.displaySrc || imageData.src;
+      const objectFit = this.aspectRatioLocked ? 'contain' : 'fill';
+      bitmap.style.objectFit = objectFit;
+      // Preserve original source for export at full quality
+      bitmap.dataset.fullSrc = imageData.src;
+      img.appendChild(bitmap);
+      // Preserve original source for export at full quality
+      img.dataset.fullSrc = imageData.src;
+      img.dataset.objectFit = objectFit;
       
       // Calculate size preserving aspect ratio, max 400px on longest side
       const maxSize = 400;
@@ -671,7 +1079,7 @@ class InstagramPostCreator {
       
       img.style.width = `${width}px`;
       img.style.height = `${height}px`;
-      img.dataset.originalAspectRatio = (width / height).toString();
+  img.dataset.originalAspectRatio = (width / height).toString();
       
       img.style.left = '50px';
       img.style.top = '50px';
@@ -701,7 +1109,7 @@ class InstagramPostCreator {
       rotateHandle.innerHTML = '<i class="fas fa-sync-alt"></i>';
       img.appendChild(rotateHandle);
       
-      slideElement.appendChild(img);
+    slideElement.appendChild(img);
       
       // Set up image interactions
       this.setupImageInteractions(img);
@@ -714,11 +1122,16 @@ class InstagramPostCreator {
   setupImageInteractions(img) {
     // Selection
     img.addEventListener('mousedown', (e) => {
-      if (e.target.classList.contains('ipc-resize-handle') || 
+      // Only left mouse should drag/move the image
+      if (e.button !== 0) {
+        // Allow middle/right clicks to bubble so canvas panning or context menu can work
+        return;
+      }
+      if (e.target.classList.contains('ipc-resize-handle') ||
           e.target.classList.contains('ipc-rotate-handle')) {
         return;
       }
-      
+
       this.selectImage(img);
       this.startDragging(e, img);
     });
@@ -726,6 +1139,7 @@ class InstagramPostCreator {
     // Resize handles
     img.querySelectorAll('.ipc-resize-handle').forEach(handle => {
       handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // left click only
         e.stopPropagation();
         this.startResizing(e, img, handle.dataset.position);
       });
@@ -735,6 +1149,7 @@ class InstagramPostCreator {
     const rotateHandle = img.querySelector('.ipc-rotate-handle');
     if (rotateHandle) {
       rotateHandle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // left click only
         e.stopPropagation();
         this.startRotating(e, img);
       });
@@ -755,26 +1170,30 @@ class InstagramPostCreator {
     this.updatePropertiesPanel(img);
     
     // Show properties panel
-    document.getElementById('imageProperties').style.display = 'block';
+    document.getElementById('imageProperties').style.display = 'flex';
     document.querySelector('.ipc-no-selection').style.display = 'none';
   }
 
   updatePropertiesPanel(img) {
-    const rect = img.getBoundingClientRect();
-    const parentRect = img.parentElement.getBoundingClientRect();
-    
-    document.getElementById('posX').value = parseInt(img.style.left);
-    document.getElementById('posY').value = parseInt(img.style.top);
-    document.getElementById('width').value = parseInt(img.style.width);
-    document.getElementById('height').value = parseInt(img.style.height);
-    
-    const rotation = this.getRotationFromTransform(img.style.transform);
-    document.getElementById('rotation').value = rotation;
-    document.getElementById('rotationValue').value = rotation;
-    
-    const opacity = img.style.opacity ? parseFloat(img.style.opacity) * 100 : 100;
-    document.getElementById('opacity').value = opacity;
-    document.getElementById('opacityValue').value = opacity;
+    // Batch DOM updates to minimize reflows
+    requestAnimationFrame(() => {
+      const posX = parseInt(img.style.left);
+      const posY = parseInt(img.style.top);
+      const width = parseInt(img.style.width);
+      const height = parseInt(img.style.height);
+      const rotation = this.getRotationFromTransform(img.style.transform);
+      const opacity = img.style.opacity ? parseFloat(img.style.opacity) * 100 : 100;
+      
+      // Update all inputs in one batch
+      document.getElementById('posX').value = posX;
+      document.getElementById('posY').value = posY;
+      document.getElementById('width').value = width;
+      document.getElementById('height').value = height;
+      document.getElementById('rotation').value = rotation;
+      document.getElementById('rotationValue').value = rotation;
+      document.getElementById('opacity').value = opacity;
+      document.getElementById('opacityValue').value = opacity;
+    });
   }
 
   getRotationFromTransform(transform) {
@@ -785,12 +1204,8 @@ class InstagramPostCreator {
 
   updateImageTransform() {
     if (!this.selectedImage) return;
-    
-    const rotation = document.getElementById('rotation').value;
-    const scaleX = this.selectedImage.dataset.scaleX || '1';
-    const scaleY = this.selectedImage.dataset.scaleY || '1';
-    
-    this.selectedImage.style.transform = `rotate(${rotation}deg) scaleX(${scaleX}) scaleY(${scaleY})`;
+    // Keep composition logic in one place (includes live scale if present)
+    this.applyComposedTransform(this.selectedImage);
   }
 
   resetImageTransform() {
@@ -816,6 +1231,7 @@ class InstagramPostCreator {
   }
 
   startDragging(e, img) {
+    if (this.isCropMode) return; // Do not move image in crop mode
     this.isDragging = true;
     this.dragOffset = {
       x: e.clientX - parseInt(img.style.left),
@@ -847,6 +1263,10 @@ class InstagramPostCreator {
   }
 
   startResizing(e, img, position) {
+    if (this.isCropMode) {
+      this.startCroppingResize(e, img, position);
+      return;
+    }
     this.isResizing = true;
     const startX = e.clientX;
     const startY = e.clientY;
@@ -1062,13 +1482,39 @@ class InstagramPostCreator {
     const canvas = document.getElementById('mainCanvas');
     if (!canvas) return;
 
-    // Determine per-panel base size from the canvasSize selector (this represents single-panel size)
-    const baseSize = parseInt(document.getElementById('canvasSize').value) || 1080;
+    // Use Instagram's recommended resolutions per aspect ratio
     const cols = this.canvasCols || 1;
     const rows = this.canvasRows || 1;
+    const ar = this.panelAspect || { w:1, h:1 };
+    
+    let panelW, panelH;
+    // Instagram recommended sizes per aspect ratio
+    if (ar.w === 1 && ar.h === 1) {
+      // Square: 1080×1080
+      panelW = 1080;
+      panelH = 1080;
+    } else if (ar.w === 4 && ar.h === 5) {
+      // Portrait: 1080×1350
+      panelW = 1080;
+      panelH = 1350;
+    } else if (ar.w === 16 && ar.h === 9) {
+      // Landscape: 1080×608
+      panelW = 1080;
+      panelH = 608;
+    } else {
+      // Fallback: calculate from aspect ratio
+      const baseSize = 1080;
+      if (ar.w >= ar.h) {
+        panelW = baseSize;
+        panelH = Math.round(baseSize * (ar.h / ar.w));
+      } else {
+        panelH = baseSize;
+        panelW = Math.round(baseSize * (ar.w / ar.h));
+      }
+    }
 
-    const totalWidth = baseSize * cols;
-    const totalHeight = baseSize * rows;
+    const totalWidth = panelW * cols;
+    const totalHeight = panelH * rows;
 
     // Apply pixel dimensions to the on-screen canvas. The wrapper + fitToView will scale it to fit the UI.
     canvas.style.width = `${totalWidth}px`;
@@ -1119,12 +1565,8 @@ class InstagramPostCreator {
     if (!container || !canvas) return;
     
     const containerRect = container.getBoundingClientRect();
-    const singlePanelSize = parseInt(document.getElementById('canvasSize').value) || 1080;
-    const cols = this.canvasCols || 1;
-    const rows = this.canvasRows || 1;
-
-    const canvasWidth = singlePanelSize * cols;
-    const canvasHeight = singlePanelSize * rows;
+    const canvasWidth = parseInt(canvas.style.width) || 1080;
+    const canvasHeight = parseInt(canvas.style.height) || 1080;
 
     const scaleX = containerRect.width / canvasWidth;
     const scaleY = containerRect.height / canvasHeight;
@@ -1157,11 +1599,49 @@ class InstagramPostCreator {
   }
 
   async exportSlides() {
+    // Ensure any in-progress live scaling is committed before export
+    if (this.liveScaleActive) {
+      this.commitLiveScale();
+    }
+    
+    // Force update canvas display before export to ensure dimensions are correct
+    this.updateCanvasDisplay();
+    
     const slideCount = this.panelCount || this.slides.length;
-    const singlePanelSize = parseInt(document.getElementById('canvasSize').value);
     const cols = this.canvasCols || 1;
     const rows = this.canvasRows || 1;
-    const canvasSize = singlePanelSize * Math.max(cols, 1); // combined canvas width/height basis (we'll use square base per panel)
+    
+    // Use Instagram's recommended resolutions per aspect ratio (same logic as updateCanvasDisplay)
+    const ar = this.panelAspect || { w: 1, h: 1 };
+    let panelW, panelH;
+    
+    if (ar.w === 1 && ar.h === 1) {
+      panelW = 1080;
+      panelH = 1080;
+    } else if (ar.w === 4 && ar.h === 5) {
+      panelW = 1080;
+      panelH = 1350;
+    } else if (ar.w === 16 && ar.h === 9) {
+      panelW = 1080;
+      panelH = 608;
+    } else {
+      const baseSize = 1080;
+      if (ar.w >= ar.h) {
+        panelW = baseSize;
+        panelH = Math.round(baseSize * (ar.h / ar.w));
+      } else {
+        panelH = baseSize;
+        panelW = Math.round(baseSize * (ar.w / ar.h));
+      }
+    }
+    
+    console.log('[EXPORT] Aspect ratio:', ar, 'cols:', cols, 'rows:', rows);
+    console.log('[EXPORT] Panel dimensions:', panelW, 'x', panelH);
+    console.log('[EXPORT] Combined canvas will be:', panelW * cols, 'x', panelH * rows);
+    
+    // Verify on-screen canvas dimensions
+    const onScreenCanvas = document.getElementById('mainCanvas');
+    console.log('[EXPORT] On-screen canvas style:', onScreenCanvas.style.width, 'x', onScreenCanvas.style.height);
     
     // Create export modal
     const modal = document.createElement('div');
@@ -1188,45 +1668,51 @@ class InstagramPostCreator {
         return;
       }
       
-      // For multi-panel exports we render a single combined canvas sized to (singlePanelSize * cols) x (singlePanelSize * rows)
+      // Render entire combined canvas exactly as shown on screen, then slice it
       statusText.textContent = `Exporting ${slideCount} panels...`;
       progressBar.style.width = `0%`;
 
-      const combinedWidth = singlePanelSize * cols;
-      const combinedHeight = singlePanelSize * rows;
+      const combinedWidth = panelW * cols;
+      const combinedHeight = panelH * rows;
+      
+      console.log('[EXPORT] Creating combined canvas:', combinedWidth, 'x', combinedHeight);
 
       // Render the combined slide (there is only one slide in this design)
       const slide = this.slides[0];
-      const canvas = document.createElement('canvas');
-      canvas.width = combinedWidth;
-      canvas.height = combinedHeight;
-      const ctx = canvas.getContext('2d');
+      const combinedCanvas = document.createElement('canvas');
+      combinedCanvas.width = combinedWidth;
+      combinedCanvas.height = combinedHeight;
+      const combinedCtx = combinedCanvas.getContext('2d');
 
-      await this.renderSlideToCanvas(slide, canvas, ctx);
+      // Render the entire canvas exactly as it appears on screen
+      await this.renderSlideToCanvas(slide, combinedCanvas, combinedCtx);
 
-      // Export panels by cropping the combined canvas
+      // Now cookie-cutter slice the combined canvas into individual panels
       let panelIndex = 0;
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
           panelIndex++;
+          console.log(`[EXPORT] Panel ${panelIndex}: Slicing from (${col * panelW}, ${row * panelH}) size ${panelW}x${panelH}`);
           statusText.textContent = `Exporting panel ${panelIndex} of ${slideCount}...`;
           progressBar.style.width = `${(panelIndex / slideCount) * 100}%`;
 
+          // Create a canvas for this panel slice
           const panelCanvas = document.createElement('canvas');
-          panelCanvas.width = singlePanelSize;
-          panelCanvas.height = singlePanelSize;
+          panelCanvas.width = panelW;
+          panelCanvas.height = panelH;
           const panelCtx = panelCanvas.getContext('2d');
 
+          // Copy the exact pixels from the combined canvas
           panelCtx.drawImage(
-            canvas,
-            col * singlePanelSize,
-            row * singlePanelSize,
-            singlePanelSize,
-            singlePanelSize,
+            combinedCanvas,
+            col * panelW,
+            row * panelH,
+            panelW,
+            panelH,
             0,
             0,
-            singlePanelSize,
-            singlePanelSize
+            panelW,
+            panelH
           );
 
           const blob = await new Promise(resolve => panelCanvas.toBlob(resolve, 'image/png'));
@@ -1253,36 +1739,121 @@ class InstagramPostCreator {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // Calculate scale factor between on-screen canvas and export canvas
+    const onScreenCanvas = document.getElementById('mainCanvas');
+    const onScreenWidth = parseInt(onScreenCanvas.style.width) || canvas.width;
+    const onScreenHeight = parseInt(onScreenCanvas.style.height) || canvas.height;
+    const scaleX = canvas.width / onScreenWidth;
+    const scaleY = canvas.height / onScreenHeight;
+    
+    console.log('[RENDER] On-screen canvas:', onScreenWidth, 'x', onScreenHeight);
+    console.log('[RENDER] Export canvas:', canvas.width, 'x', canvas.height);
+    console.log('[RENDER] Scale factors:', scaleX, 'x', scaleY);
+    
     // Get all images in the slide sorted by z-index
     const images = Array.from(slide.querySelectorAll('.ipc-canvas-image'))
       .sort((a, b) => (parseInt(a.style.zIndex) || 0) - (parseInt(b.style.zIndex) || 0));
     
     for (const imgDiv of images) {
       const img = new Image();
-      img.src = imgDiv.style.backgroundImage.slice(5, -2); // Remove url(" and ")
-      
+      // Prefer full-resolution source from inner bitmap if available
+      const inner = imgDiv.querySelector('img.ipc-canvas-bitmap');
+      const inlineSrc = inner && (inner.dataset.fullSrc || inner.src);
+      const fallbackSrc = imgDiv.dataset.fullSrc;
+      let resolvedSrc = inlineSrc || fallbackSrc;
+
+      if (!resolvedSrc) {
+        const bg = imgDiv.style.backgroundImage;
+        if (bg && bg.startsWith('url(')) {
+          resolvedSrc = bg.slice(5, -2);
+        }
+      }
+
+      if (!resolvedSrc) {
+        console.warn('[RENDER] Missing image source for export, skipping element', imgDiv.dataset.imageId);
+        continue;
+      }
+
+      img.src = resolvedSrc;
+
       await new Promise((resolve) => {
         img.onload = () => {
           ctx.save();
-          
-          // Apply transformations
-          const x = parseInt(imgDiv.style.left);
-          const y = parseInt(imgDiv.style.top);
-          const width = parseInt(imgDiv.style.width);
-          const height = parseInt(imgDiv.style.height);
+
+          // Apply transformations - scale positions/sizes to match export canvas
+          const x = parseInt(imgDiv.style.left) * scaleX;
+          const y = parseInt(imgDiv.style.top) * scaleY;
+          const width = parseInt(imgDiv.style.width) * scaleX;
+          const height = parseInt(imgDiv.style.height) * scaleY;
           const rotation = this.getRotationFromTransform(imgDiv.style.transform);
           const opacity = parseFloat(imgDiv.style.opacity || 1);
-          const scaleX = parseFloat(imgDiv.dataset.scaleX || 1);
-          const scaleY = parseFloat(imgDiv.dataset.scaleY || 1);
-          
+          const scaleFlipX = parseFloat(imgDiv.dataset.scaleX || 1);
+          const scaleFlipY = parseFloat(imgDiv.dataset.scaleY || 1);
+
           ctx.globalAlpha = opacity;
           ctx.translate(x + width / 2, y + height / 2);
           ctx.rotate(rotation * Math.PI / 180);
-          ctx.scale(scaleX, scaleY);
-          
-          ctx.drawImage(img, -width / 2, -height / 2, width, height);
+          ctx.scale(scaleFlipX, scaleFlipY);
+
+          // Apply crop if present (fractions)
+          const cropTop = inner ? parseFloat(inner.dataset.cropTopPct || '0') : 0;
+          const cropRight = inner ? parseFloat(inner.dataset.cropRightPct || '0') : 0;
+          const cropBottom = inner ? parseFloat(inner.dataset.cropBottomPct || '0') : 0;
+          const cropLeft = inner ? parseFloat(inner.dataset.cropLeftPct || '0') : 0;
+
+          let sx = 0;
+          let sy = 0;
+          let sWidth = img.naturalWidth;
+          let sHeight = img.naturalHeight;
+
+          if (cropTop || cropRight || cropBottom || cropLeft) {
+            sx = Math.floor(img.naturalWidth * cropLeft);
+            sy = Math.floor(img.naturalHeight * cropTop);
+            sWidth = Math.floor(img.naturalWidth * (1 - cropLeft - cropRight));
+            sHeight = Math.floor(img.naturalHeight * (1 - cropTop - cropBottom));
+          }
+
+          if (sWidth <= 0 || sHeight <= 0) {
+            ctx.restore();
+            resolve();
+            return;
+          }
+
+          const computedFit = inner && typeof window !== 'undefined' ? window.getComputedStyle(inner).objectFit : '';
+          const fit = (imgDiv.dataset.objectFit || (inner ? inner.style.objectFit : '') || computedFit || 'fill').toLowerCase();
+          const targetWidth = width;
+          const targetHeight = height;
+          let destWidth = targetWidth;
+          let destHeight = targetHeight;
+          let offsetX = -targetWidth / 2;
+          let offsetY = -targetHeight / 2;
+
+          if ((fit === 'contain' || fit === 'cover') && sWidth > 0 && sHeight > 0) {
+            const scaleFactor = fit === 'contain'
+              ? Math.min(targetWidth / sWidth, targetHeight / sHeight)
+              : Math.max(targetWidth / sWidth, targetHeight / sHeight);
+
+            if (Number.isFinite(scaleFactor) && scaleFactor > 0) {
+              destWidth = sWidth * scaleFactor;
+              destHeight = sHeight * scaleFactor;
+              offsetX = -destWidth / 2;
+              offsetY = -destHeight / 2;
+
+              if (fit === 'contain') {
+                offsetX = -targetWidth / 2 + (targetWidth - destWidth) / 2;
+                offsetY = -targetHeight / 2 + (targetHeight - destHeight) / 2;
+              }
+            }
+          } else if (fit === 'none') {
+            destWidth = sWidth;
+            destHeight = sHeight;
+            offsetX = -targetWidth / 2;
+            offsetY = -targetHeight / 2;
+          }
+
+          ctx.drawImage(img, sx, sy, sWidth, sHeight, offsetX, offsetY, destWidth, destHeight);
           ctx.restore();
-          
+
           resolve();
         };
       });
