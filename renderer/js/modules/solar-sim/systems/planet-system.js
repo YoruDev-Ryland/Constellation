@@ -518,7 +518,8 @@ export class PlanetSystem {
     const spriteMat = new THREE.SpriteMaterial({
       map: texture,
       transparent: true,
-      depthTest: false, // Always visible
+      // Let labels be occluded by the globe but not write to depth
+      depthTest: true,
       depthWrite: false
     });
     
@@ -669,7 +670,9 @@ export class PlanetSystem {
         const gmstRad = this.calculateGMST(currentDate);
         
         // Apply texture alignment offsets
-        const EARTH_TEX_LONG0_DEG = -180;  // Texture seam alignment
+  // Texture seam alignment: 0 means map's 0° longitude aligns with GMST 0
+  // Was -180 (placing seam at the back); set to 0 to rotate 180° and fix inversion
+  const EARTH_TEX_LONG0_DEG = 0;
         const EARTH_GMST_CORR_DEG = -1.5;   // Fine-tuning correction
         
         const seamRad = (EARTH_TEX_LONG0_DEG * Math.PI) / 180;
@@ -739,28 +742,34 @@ export class PlanetSystem {
    * @returns {number} GMST in radians (0 to 2π)
    */
   calculateGMST(date) {
-    // Calculate Julian Date
-    const jd = this.dateToJD(date);
-    
-    // Days since J2000.0 (JD 2451545.0)
-    const T = (jd - 2451545.0) / 36525.0; // Julian centuries since J2000
-    
-    // GMST at 0h UT (IAU 2006 expression in seconds)
-    // GMST_0 = 67310.54841 + (876600*3600 + 8640184.812866)*T + 0.093104*T^2 - 6.2e-6*T^3
-    let gmst_sec = 67310.54841 + (876600.0 * 3600.0 + 8640184.812866) * T 
-                   + 0.093104 * T * T - 6.2e-6 * T * T * T;
-    
-    // Add the time of day contribution (UT)
-    const utHours = date.getUTCHours() + date.getUTCMinutes() / 60.0 + date.getUTCSeconds() / 3600.0;
-    const earthRotationRate = 1.00273790935; // Earth rotation rate relative to solar time
-    gmst_sec += utHours * 3600.0 * earthRotationRate;
-    
-    // Convert to degrees, then radians
-    const gmst_deg = (gmst_sec / 240.0) % 360.0; // 1 sidereal second = 1/240 degree
-    const gmst_rad = (gmst_deg * Math.PI / 180.0);
-    
-    // Normalize to [0, 2π]
-    return gmst_rad >= 0 ? gmst_rad : gmst_rad + 2 * Math.PI;
+    // Full Julian Date (includes time of day)
+    const JD = this.dateToJD(date);
+
+    // Julian Date at 0h UT (preceding midnight)
+    const JD0 = Math.floor(JD - 0.5) + 0.5;
+
+    // UT in seconds since 0h UT
+    const UT_sec = (JD - JD0) * 86400.0;
+
+    // Julian centuries since J2000 from 0h UT
+    const T = (JD0 - 2451545.0) / 36525.0;
+
+    // GMST at UT (IAU 2006/2000A reduced expression)
+    // Using form with explicit UT term to avoid double-counting:
+    // GMST(sec) = 24110.54841 + 8640184.812866*T + 0.093104*T^2 - 6.2e-6*T^3 + 1.00273790935*UT_sec
+    let gmst_sec = 24110.54841
+                 + 8640184.812866 * T
+                 + 0.093104 * T * T
+                 - 6.2e-6 * T * T * T
+                 + 1.00273790935 * UT_sec;
+
+    // Wrap to [0, 86400)
+    gmst_sec = ((gmst_sec % 86400) + 86400) % 86400;
+
+    // Convert to radians (1 degree = 240 seconds)
+    const gmst_rad = (gmst_sec / 240.0) * (Math.PI / 180.0);
+
+    return gmst_rad;
   }
   
   /**
