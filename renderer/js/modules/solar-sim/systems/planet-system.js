@@ -129,6 +129,10 @@ export class PlanetSystem {
           const nightTex = await this.loadTextureFile(basePath + files.night);
           if (nightTex) textureData.night = nightTex;
         }
+        if (files.clouds) {
+          const cloudsTex = await this.loadTextureFile(basePath + files.clouds);
+          if (cloudsTex) textureData.clouds = cloudsTex;
+        }
         if (files.normal) {
           const normalTex = await this.loadTextureFile(basePath + files.normal);
           if (normalTex) textureData.normal = normalTex;
@@ -392,6 +396,56 @@ export class PlanetSystem {
     
     // Add pole axis spike with N/S labels (to orient node, not spin)
     this.addPoleSpike(orient, visualRadius, bodyId);
+
+    // Add Earth cloud layer as a slightly larger, transparent sphere
+    if (bodyId === 399 && textureData?.clouds) {
+      const cloudRadius = visualRadius * 1.003; // slightly above the surface
+      const cloudGeo = new THREE.SphereGeometry(cloudRadius, 64, 64);
+      const cloudMat = new THREE.MeshStandardMaterial({
+        map: textureData.clouds,
+        color: 0xffffff,
+        roughness: 1.0,
+        metalness: 0.0,
+        transparent: true,
+        opacity: 1.0,
+        depthTest: true,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1
+      });
+
+      // Derive alpha from the clouds JPG brightness (black => transparent)
+      cloudMat.onBeforeCompile = (shader) => {
+        shader.uniforms.uAlphaCutoff = { value: 0.2 }; // tweakable threshold
+        shader.uniforms.uAlphaSoft = { value: 0.06 };  // edge softness
+
+        // Declare uniforms in fragment shader
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <common>',
+          `#include <common>\nuniform float uAlphaCutoff;\nuniform float uAlphaSoft;\n`
+        );
+
+        // Apply alpha-from-luma after map sampling
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <map_fragment>',
+          `#include <map_fragment>\n
+           // diffuseColor.rgb now includes the map contribution in linear space
+           float cloudLuma = max(max(diffuseColor.r, diffuseColor.g), diffuseColor.b);
+           float alpha = smoothstep(uAlphaCutoff - uAlphaSoft, uAlphaCutoff + uAlphaSoft, cloudLuma);
+           diffuseColor.a *= alpha;`
+        );
+      };
+
+      const cloudsMesh = new THREE.Mesh(cloudGeo, cloudMat);
+      cloudsMesh.name = `${name}_clouds`;
+      // Attach to the same spin node so clouds rotate with Earth (drift added in updateRotations)
+      spin.add(cloudsMesh);
+
+      // Store reference
+      const earthNodes = this.planetMeshes.get(399) || nodes;
+      earthNodes.clouds = cloudsMesh;
+    }
   }
   
   /**
@@ -684,6 +738,17 @@ export class PlanetSystem {
         
         // Update sun direction for Earth's day/night shader
         this.updateEarthSunDirection();
+
+        // Optional: add gentle differential rotation for clouds relative to surface
+        if (nodes.clouds) {
+          const period_hr = SIDEREAL_ROTATION_HOURS[399];
+          if (period_hr) {
+            const fracRot = (deltaSec * timeWarp) / (period_hr * 3600);
+            const deltaRad = 2.0 * Math.PI * fracRot;
+            const drift = 0.05; // 5% faster than surface
+            nodes.clouds.rotateY(deltaRad * drift);
+          }
+        }
       } else {
         // Other planets: Use sidereal rotation period
         const period_hr = SIDEREAL_ROTATION_HOURS[bodyId];
@@ -814,8 +879,12 @@ export class PlanetSystem {
     for (const [bodyId, nodes] of this.planetMeshes) {
       const radius = PLANET_RADII_KM[bodyId];
       const visualRadius = (radius / KM_PER_UNIT) * scale;
-      nodes.globe.geometry.dispose();
-      nodes.globe.geometry = new this.THREE.SphereGeometry(visualRadius, 64, 64);
+      // Update globe mesh geometry (globe is a Group; first child is the Mesh)
+      const globeMesh = nodes.globe && nodes.globe.children && nodes.globe.children[0];
+      if (globeMesh && globeMesh.isMesh) {
+        globeMesh.geometry.dispose();
+        globeMesh.geometry = new this.THREE.SphereGeometry(visualRadius, 64, 64);
+      }
       
       // Update rings if present
       if (nodes.ring && bodyId === 699) {
@@ -830,6 +899,13 @@ export class PlanetSystem {
         // Remove old spike and create new one at correct scale
         nodes.orient.remove(nodes.poleSpike);
         this.addPoleSpike(nodes.orient, visualRadius, bodyId);
+      }
+
+      // Update clouds shell if present
+      if (nodes.clouds) {
+        const cloudRadius = visualRadius * 1.003;
+        nodes.clouds.geometry.dispose();
+        nodes.clouds.geometry = new this.THREE.SphereGeometry(cloudRadius, 64, 64);
       }
     }
   }
