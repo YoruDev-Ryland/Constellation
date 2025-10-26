@@ -1,0 +1,317 @@
+/**
+ * Solar System Simulator - Styles
+ * All styles scoped to #solarSimView to prevent conflicts
+ */
+
+/* Main container - only apply styles when active */
+#solarSimView.active {
+  display: flex;
+  flex-direction: row; /* Side-by-side layout */
+  height: 100%;
+  overflow: visible; /* Allow controls to be visible */
+}
+
+/* 3D Canvas container */
+#solarSimView #solarSimCanvas {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+#solarSimView #solarSimCanvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Controls sidebar - fixed on right side */
+#solarSimView .solar-sim-controls {
+  width: 320px;
+  min-width: 320px;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  padding: 20px;
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+#solarSimView .solar-sim-controls::-webkit-scrollbar {
+  width: 8px;
+}
+
+#solarSimView .solar-sim-controls::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+#solarSimView .solar-sim-controls::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 4px;
+}
+
+#solarSimView .solar-sim-controls::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Control panels */
+#solarSimView .control-panel {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+#solarSimView .control-panel:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+#solarSimView .control-panel h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Time controls */
+#solarSimView .time-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#solarSimView .time-controls button {
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+#solarSimView .time-display {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  font-family: 'Courier New', monospace;
+}
+
+/* Satellite controls */
+#solarSimView .satellite-info {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* Scale controls */
+#solarSimView .scale-control {
+  margin-bottom: 12px;
+}
+
+#solarSimView .scale-control:last-child {
+  margin-bottom: 0;
+}
+
+#solarSimView .scale-control label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+#solarSimView .scale-control label span {
+  font-weight: 600;
+  color: var(--accent-blue);
+  font-family: 'Courier New', monospace;
+}
+
+#solarSimView .scale-control input[type="range"] {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+#solarSimView .scale-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--accent-blue);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+#solarSimView .scale-control input[type="range"]::-webkit-slider-thumb:hover {
+  background: var(--accent-purple);
+  transform: scale(1.2);
+}
+
+#solarSimView .scale-control input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--accent-blue);
+  cursor: pointer;
+  border-radius: 50%;
+  border: none;
+  transition: all 0.2s;
+}
+
+#solarSimView .scale-control input[type="range"]::-moz-range-thumb:hover {
+  background: var(--accent-purple);
+  transform: scale(1.2);
+}
+
+/* Checkbox controls */
+#solarSimView .checkbox-control {
+  margin-top: 8px;
+}
+
+#solarSimView .checkbox-control label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+#solarSimView .checkbox-control input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent-blue);
+}
+
+/* Planet buttons */
+#solarSimView .planet-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+#solarSimView .btn-planet {
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+#solarSimView .btn-planet:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+  transform: translateY(-1px);
+}
+
+#solarSimView .btn-planet:active {
+  transform: translateY(0);
+}
+
+/* Select input styling */
+#solarSimView select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+}
+
+#solarSimView select:hover {
+  border-color: var(--accent-blue);
+}
+
+#solarSimView select:focus {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+/* Button styling overrides for solar sim */
+#solarSimView .btn-secondary {
+  padding: 6px 10px;
+  font-size: 12px;
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
+#solarSimView .btn-secondary:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-blue);
+}
+
+/* Loading indicator */
+#solarSimView .solar-sim-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--text-secondary);
+  z-index: 100;
+}
+
+#solarSimView .solar-sim-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--bg-tertiary);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #solarSimView .solar-sim-controls {
+    max-width: 280px;
+    top: 10px;
+    right: 10px;
+    padding: 12px;
+  }
+  
+  #solarSimView .time-controls {
+    grid-template-columns: 1fr;
+  }
+  
+  #solarSimView .planet-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Focus indicator for focused planet */
+#solarSimView .planet-focused {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}

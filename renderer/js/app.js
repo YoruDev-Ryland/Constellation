@@ -394,6 +394,11 @@ function setupEventListeners() {
 function switchView(view) {
   currentView = view;
   
+  // Stop Solar Sim animation if switching away from it
+  if (view !== 'solarSim' && solarSimInstance) {
+    solarSimInstance.hide();
+  }
+  
   // Update navigation only for main views (not project details)
   if (view !== 'projectDetailsView') {
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -414,6 +419,8 @@ function switchView(view) {
     initializeToolsView();
   } else if (view === 'social') {
     initializeSocialView();
+  } else if (view === 'solarSim') {
+    initializeSolarSim();
   }
   
   console.log(`Switched to view: ${viewId}`);
@@ -961,3 +968,39 @@ function initializeSocialView() {
     console.error('Error initializing social view:', error);
   }
 }
+
+// ------- SOLAR SIM INITIALIZATION -------
+let solarSimInstance = null;
+
+async function initializeSolarSim() {
+  console.log('Initializing Solar Sim view');
+  
+  // Only initialize if we're actually on the solar sim view
+  if (currentView !== 'solarSim') {
+    console.log('Not on solar sim view, skipping initialization');
+    return;
+  }
+  
+  try {
+    if (typeof SolarSimulator === 'undefined') {
+      console.error('SolarSimulator class not loaded yet');
+      // Retry after module loads
+      setTimeout(() => {
+        if (typeof SolarSimulator !== 'undefined' && !solarSimInstance && currentView === 'solarSim') {
+          initializeSolarSim();
+        }
+      }, 500);
+      return;
+    }
+    
+    if (!solarSimInstance) {
+      solarSimInstance = new SolarSimulator('solarSimView');
+    }
+    
+    await solarSimInstance.show();
+    console.log('Solar System Simulator shown');
+  } catch (error) {
+    console.error('Error initializing solar sim:', error);
+  }
+}
+// ------- END SOLAR SIM INITIALIZATION -------

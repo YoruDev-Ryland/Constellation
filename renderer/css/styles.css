@@ -231,6 +231,7 @@ body {
   flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
+  overflow-y: auto; /* Allow views to scroll their content */
 }
 
 .content-header {
