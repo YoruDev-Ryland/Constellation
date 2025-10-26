@@ -417,23 +417,25 @@ export class PlanetSystem {
 
       // Derive alpha from the clouds JPG brightness (black => transparent)
       cloudMat.onBeforeCompile = (shader) => {
-        shader.uniforms.uAlphaCutoff = { value: 0.2 }; // tweakable threshold
-        shader.uniforms.uAlphaSoft = { value: 0.06 };  // edge softness
+        shader.uniforms.uAlphaCutoff = { value: 0.22 }; // tweakable threshold
+        shader.uniforms.uAlphaSoft = { value: 0.06 };   // edge softness
+        shader.uniforms.uCloudOpacity = { value: 0.6 }; // overall opacity control
 
         // Declare uniforms in fragment shader
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <common>',
-          `#include <common>\nuniform float uAlphaCutoff;\nuniform float uAlphaSoft;\n`
+          `#include <common>\nuniform float uAlphaCutoff;\nuniform float uAlphaSoft;\nuniform float uCloudOpacity;\n`
         );
 
         // Apply alpha-from-luma after map sampling
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <map_fragment>',
-          `#include <map_fragment>\n
-           // diffuseColor.rgb now includes the map contribution in linear space
-           float cloudLuma = max(max(diffuseColor.r, diffuseColor.g), diffuseColor.b);
-           float alpha = smoothstep(uAlphaCutoff - uAlphaSoft, uAlphaCutoff + uAlphaSoft, cloudLuma);
-           diffuseColor.a *= alpha;`
+          `#include <map_fragment>\n\n` +
+          `// diffuseColor.rgb now includes the map contribution in linear space.\n` +
+          `// Compute luminance in linear space (Rec.709):\n` +
+          `float cloudLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));\n` +
+          `float alpha = smoothstep(uAlphaCutoff - uAlphaSoft, uAlphaCutoff + uAlphaSoft, cloudLuma);\n` +
+          `diffuseColor.a *= alpha * uCloudOpacity;`
         );
       };
 
