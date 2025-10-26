@@ -85,6 +85,7 @@ export class PlanetSystem {
           this.textureLoader.load(
             `${basePath}${mainFile}`,
             (tex) => {
+              tex.colorSpace = THREE.SRGBColorSpace; // Match old site texture handling
               tex.anisotropy = 16; // Better quality at angles
               resolve(tex);
             },
@@ -105,6 +106,7 @@ export class PlanetSystem {
             this.textureLoader.load(
               `${basePath}${files.fallback}`,
               (tex) => {
+                tex.colorSpace = THREE.SRGBColorSpace; // Match old site texture handling
                 tex.anisotropy = 16;
                 resolve(tex);
               },
@@ -123,10 +125,6 @@ export class PlanetSystem {
       
       // Load additional maps for Earth
       if (id === 399) {
-        if (files.clouds) {
-          const cloudTex = await this.loadTextureFile(basePath + files.clouds);
-          if (cloudTex) textureData.clouds = cloudTex;
-        }
         if (files.night) {
           const nightTex = await this.loadTextureFile(basePath + files.night);
           if (nightTex) textureData.night = nightTex;
@@ -161,6 +159,7 @@ export class PlanetSystem {
       this.textureLoader.load(
         path,
         (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace; // Match old site texture handling
           tex.anisotropy = 16;
           resolve(tex);
         },
@@ -235,81 +234,101 @@ export class PlanetSystem {
           emissiveIntensity: 1.0
         });
       }
-    } else if (bodyId === 399 && textureData) {
+    } else if (bodyId === 399) {
       // Earth - custom shader with day/night blending
-      // Create the globe mesh with shader
-      const earthUniforms = {
-        dayMap: { value: textureData.main },
-        nightMap: { value: textureData.night || textureData.main },
-        normalMap: { value: textureData.normal || null },
-        uSunDir: { value: new this.THREE.Vector3(1, 0, 0) },
-        uGamma: { value: 2.2 },
-        uNightBoost: { value: 0.8 }
-      };
+      console.log('=== Earth Shader Debug ===');
+      console.log('Day texture:', textureData?.main);
+      console.log('Night texture:', textureData?.night);
+      console.log('Normal texture:', textureData?.normal);
+      console.log('Specular texture:', textureData?.specular);
       
-      material = new this.THREE.ShaderMaterial({
-        uniforms: this.THREE.UniformsUtils.merge([
-          this.THREE.UniformsLib.logdepthbuf,
-          earthUniforms
-        ]),
-        vertexShader: `
-          #include <logdepthbuf_pars_vertex>
-          
-          varying vec2 vUv;
-          varying vec3 vNormalObj;
-          
-          void main() {
-            vUv = uv;
-            vNormalObj = normalize(normal);
-            
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            gl_Position = projectionMatrix * mvPosition;
-            
-            #include <logdepthbuf_vertex>
-          }
-        `,
-        fragmentShader: `
-          #include <logdepthbuf_pars_fragment>
-          
-          uniform sampler2D dayMap;
-          uniform sampler2D nightMap;
-          uniform vec3 uSunDir;
-          uniform float uNightBoost;
-          
-          varying vec2 vUv;
-          varying vec3 vNormalObj;
-          
-          void main() {
-            #include <logdepthbuf_fragment>
-            
-            vec3 N = normalize(vNormalObj);
-            float NdotL = dot(N, normalize(uSunDir));
-            
-            vec3 day = texture2D(dayMap, vUv).rgb;
-            vec3 night = texture2D(nightMap, vUv).rgb;
-            
-            // Soft terminator with smoothstep
-            float edge = smoothstep(-0.1, 0.1, NdotL);
-            float unlit = 1.0 - edge;
-            
-            // Blend day and night
-            vec3 color = day * edge + night * unlit * uNightBoost;
-            
-            gl_FragColor = vec4(color, 1.0);
-          }
-        `,
-        lights: false,
-        transparent: false,
-        depthWrite: true,
-        depthTest: true
-      });
-      
-      material.extensions = {
-        logarithmicDepthBuffer: true
-      };
-      
-      // Store reference to material for sun direction updates
-      this.earthDayNightMaterial = material;
+      if (textureData?.main) {
+        // Earth day/night shader (minimal, no log-depth to avoid chunk/version coupling)
+        const earthUniforms = {
+          dayMap: { value: textureData.main },
+          nightMap: { value: textureData.night || textureData.main },
+          uSunDir: { value: new this.THREE.Vector3(1, 0, 0) },
+          uNightBoost: { value: 0.8 }
+        };
+
+        material = new this.THREE.ShaderMaterial({
+          uniforms: earthUniforms,
+          vertexShader: `
+            precision highp float;
+            #include <common>
+            #include <logdepthbuf_pars_vertex>
+            varying vec2 vUv;
+            varying vec3 vNormalObj;
+            void main() {
+              vUv = uv;
+              vNormalObj = normalize(normal);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              #include <logdepthbuf_vertex>
+            }
+          `,
+          fragmentShader: `
+            precision highp float;
+            #include <common>
+            #include <logdepthbuf_pars_fragment>
+            uniform sampler2D dayMap;
+            uniform sampler2D nightMap;
+            uniform vec3 uSunDir;
+            uniform float uNightBoost;
+            varying vec2 vUv;
+            varying vec3 vNormalObj;
+
+            // sRGB <-> Linear helpers (piecewise accurate)
+            vec3 srgbToLinear(vec3 c) {
+              vec3 lo = c / 12.92;
+              vec3 hi = pow((c + 0.055) / 1.055, vec3(2.4));
+              return mix(lo, hi, step(vec3(0.04045), c));
+            }
+
+            vec3 linearToSrgb(vec3 c) {
+              vec3 lo = c * 12.92;
+              vec3 hi = 1.055 * pow(c, vec3(1.0/2.4)) - 0.055;
+              return mix(lo, hi, step(vec3(0.0031308), c));
+            }
+
+            void main() {
+              #include <logdepthbuf_fragment>
+              vec3 N = normalize(vNormalObj);
+              float NdotL = dot(N, normalize(uSunDir));
+
+              // Decode sRGB textures to linear for correct blending
+              vec3 day = srgbToLinear(texture2D(dayMap, vUv).rgb);
+              vec3 night = srgbToLinear(texture2D(nightMap, vUv).rgb);
+
+              // Soft terminator with smoothstep
+              float edge = smoothstep(-0.1, 0.1, NdotL);
+              edge = clamp(edge, 0.0, 1.0);
+              float unlit = 1.0 - edge;
+
+              // Blend day and night in linear space
+              vec3 colorLinear = day * edge + night * unlit * uNightBoost;
+
+              // Encode to sRGB for display
+              vec3 color = linearToSrgb(colorLinear);
+              gl_FragColor = vec4(color, 1.0);
+            }
+          `,
+          lights: false,
+          transparent: false,
+          depthWrite: true,
+          depthTest: true
+        });
+        
+        // Store reference to material for sun direction updates
+        this.earthDayNightMaterial = material;
+        console.log('Created Earth day/night shader material');
+      } else {
+        console.warn('No Earth textures loaded! Using blue fallback');
+        material = new THREE.MeshStandardMaterial({
+          color: 0x2a5b8d,
+          roughness: 0.9,
+          metalness: 0.0
+        });
+      }
     } else {
       // Other planets - standard material with texture
       if (textureData?.main) {
@@ -339,6 +358,7 @@ export class PlanetSystem {
     globeGroup.add(globe);
     globeGroup.userData.bodyId = bodyId;
     globeGroup.userData.bodyName = name;
+    globeGroup.userData.radius = visualRadius; // Store for camera focusing
     
     // Store material reference for Earth day/night updates
     if (bodyId === 399 && this.earthDayNightMaterial) {
@@ -365,11 +385,6 @@ export class PlanetSystem {
     };
     this.planetMeshes.set(bodyId, nodes);
     
-    // Add clouds for Earth
-    if (bodyId === 399 && textureData?.clouds) {
-      this.addEarthClouds(globeGroup, visualRadius, textureData.clouds);
-    }
-    
     // Add rings for Saturn
     if (bodyId === 699) {
       this.addSaturnRings(spin);
@@ -377,108 +392,6 @@ export class PlanetSystem {
     
     // Add pole axis spike with N/S labels (to orient node, not spin)
     this.addPoleSpike(orient, visualRadius, bodyId);
-  }
-  
-  /**
-   * Add cloud layer to Earth
-   */
-  addEarthClouds(globeGroup, baseRadius, cloudTexture) {
-    const THREE = this.THREE;
-    const cloudRadius = baseRadius * 1.01; // Slightly larger than Earth
-    const cloudGeometry = new THREE.SphereGeometry(cloudRadius, 64, 64);
-    
-    const cloudMaterial = new THREE.MeshStandardMaterial({
-      map: cloudTexture,
-      transparent: true,
-      // We'll use an alpha map (created from the cloud texture's luminance)
-      // so the black background becomes transparent. Keep opacity 1.0
-      // and use alphaTest to discard near-transparent pixels for correct sorting.
-      opacity: 1.0,
-      depthWrite: false,
-      roughness: 1.0,
-      metalness: 0.0
-    });
-    
-    // Create the mesh
-    const cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
-    cloudMesh.name = 'Earth_clouds';
-
-    // If the cloud texture is an RGB image (e.g., JPG with black background),
-    // create an alpha texture from its luminance so the "black" becomes transparent.
-    const alphaTex = this.createAlphaTextureFromLuminance(cloudTexture);
-    if (alphaTex) {
-      cloudMaterial.alphaMap = alphaTex;
-      // Discard very low-alpha fragments to avoid visible black fringes
-      cloudMaterial.alphaTest = 0.05;
-      // Use the alpha map as the opacity mask; final opacity remains 1.0
-      cloudMaterial.transparent = true;
-      cloudMaterial.needsUpdate = true;
-    }
-
-    // Ensure the globe renders first, then the semi-transparent cloud layer
-    const globeMesh = globeGroup.children[0];
-    if (globeMesh) globeMesh.renderOrder = 0;
-    cloudMesh.renderOrder = 1;
-
-    globeGroup.add(cloudMesh);
-
-    // Store reference
-    const nodes = this.planetMeshes.get(399);
-    if (nodes) {
-      nodes.clouds = cloudMesh;
-    }
-  }
-
-  /**
-   * Create an alpha texture from an RGB texture by using the luminance
-   * channel as alpha. Useful when the cloud texture is a JPG with black
-   * background instead of a PNG with an alpha channel.
-   * Returns a THREE.CanvasTexture or null on failure.
-   */
-  createAlphaTextureFromLuminance(texture) {
-    if (!texture || !texture.image) return null;
-
-    const img = texture.image;
-
-    // Create canvas with same size as image
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width || 2048;
-    canvas.height = img.height || 2048;
-    const ctx = canvas.getContext('2d');
-    try {
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    } catch (e) {
-      console.warn('Could not draw image to canvas for alpha extraction', e);
-      return null;
-    }
-
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imgData.data;
-
-    // Create output image data where RGB = white and A = luminance
-    const outCanvas = document.createElement('canvas');
-    outCanvas.width = canvas.width;
-    outCanvas.height = canvas.height;
-    const outCtx = outCanvas.getContext('2d');
-    const outImage = outCtx.createImageData(canvas.width, canvas.height);
-    const outData = outImage.data;
-
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i], g = data[i + 1], b = data[i + 2];
-      // Luminance (0-255)
-      const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-      // Set white color and luminance as alpha
-      outData[i] = 255;
-      outData[i + 1] = 255;
-      outData[i + 2] = 255;
-      outData[i + 3] = lum;
-    }
-
-    outCtx.putImageData(outImage, 0, 0);
-
-    const alphaTex = new this.THREE.CanvasTexture(outCanvas);
-    alphaTex.needsUpdate = true;
-    return alphaTex;
   }
   
   /**
@@ -537,15 +450,16 @@ export class PlanetSystem {
 
     // Create a thin line for the spike (along Y-axis)
     // The orient node's Y-axis is already aligned with the IAU pole direction.
-    // Use normal depth testing/writing so the spike will be occluded by the globe
-    // when it is behind it (same approach as the orbital lines).
+    // Use depth testing but NOT depth writing for proper transparency
+    // This allows the spike to be occluded by the globe when behind it,
+    // but won't block anything behind the spike itself
     const spikeMaterial = new THREE.LineBasicMaterial({
       color: 0xffff00, // Yellow for visibility
       linewidth: 2,
       transparent: true,
       opacity: 0.9,
       depthTest: true,
-      depthWrite: true
+      depthWrite: false // Don't write to depth buffer for transparent lines
     });
 
     const spikeGeometry = new THREE.BufferGeometry().setFromPoints([
@@ -682,7 +596,7 @@ export class PlanetSystem {
         transparent: true,
         opacity: 0.5,
         depthTest: true,
-        depthWrite: true,
+        depthWrite: false, // Don't write to depth buffer for transparent lines
         linewidth: 2 // Note: linewidth > 1 only works with WebGL renderer on some systems
       });
       

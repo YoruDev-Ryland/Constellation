@@ -132,7 +132,11 @@ export class CameraController {
     const targetPos = new this.THREE.Vector3();
     object.getWorldPosition(targetPos);
     
-    const radius = object.geometry?.parameters?.radius || 1;
+    // Try to get radius from: userData, geometry parameters, or fallback to 1
+    const radius = object.userData?.radius || 
+                   object.geometry?.parameters?.radius || 
+                   (object.children?.[0]?.geometry?.parameters?.radius) || 
+                   1;
     const multiplier = options.distanceMultiplier || 3;
     const targetDist = radius * multiplier;
     
@@ -200,7 +204,10 @@ export class CameraController {
     }
     
     const dist = this.camera.position.distanceTo(this.controls.target);
-    const r = this.focusedObject.geometry?.parameters?.radius || 1;
+    const r = this.focusedObject.userData?.radius || 
+              this.focusedObject.geometry?.parameters?.radius || 
+              (this.focusedObject.children?.[0]?.geometry?.parameters?.radius) || 
+              1;
     
     // Near plane: stay ahead of surface but keep it reasonable
     const gap = Math.max(dist - r, 1e-6);
