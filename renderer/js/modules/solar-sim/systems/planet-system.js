@@ -387,16 +387,16 @@ export class PlanetSystem {
     const cloudRadius = baseRadius * 1.01; // Slightly larger than Earth
     const cloudGeometry = new THREE.SphereGeometry(cloudRadius, 64, 64);
     
-    // Use MeshBasicMaterial so clouds don't need lighting (self-illuminated)
-    // This matches the web version behavior where clouds are always visible
-    const cloudMaterial = new THREE.MeshBasicMaterial({
+    const cloudMaterial = new THREE.MeshStandardMaterial({
       map: cloudTexture,
       transparent: true,
+      // We'll use an alpha map (created from the cloud texture's luminance)
+      // so the black background becomes transparent. Keep opacity 1.0
+      // and use alphaTest to discard near-transparent pixels for correct sorting.
       opacity: 1.0,
-      // Enable depth write so clouds participate in depth sorting
-      depthWrite: true,
-      depthTest: true,
-      side: THREE.FrontSide
+      depthWrite: false,
+      roughness: 1.0,
+      metalness: 0.0
     });
     
     // Create the mesh
@@ -409,22 +409,15 @@ export class PlanetSystem {
     if (alphaTex) {
       cloudMaterial.alphaMap = alphaTex;
       // Discard very low-alpha fragments to avoid visible black fringes
-      cloudMaterial.alphaTest = 0.1;
+      cloudMaterial.alphaTest = 0.05;
       // Use the alpha map as the opacity mask; final opacity remains 1.0
       cloudMaterial.transparent = true;
       cloudMaterial.needsUpdate = true;
     }
 
-    // Ensure the globe renders first, then the cloud layer
+    // Ensure the globe renders first, then the semi-transparent cloud layer
     const globeMesh = globeGroup.children[0];
-    if (globeMesh) {
-      globeMesh.renderOrder = 0;
-      // Ensure globe writes depth
-      if (globeMesh.material) {
-        globeMesh.material.depthWrite = true;
-        globeMesh.material.depthTest = true;
-      }
-    }
+    if (globeMesh) globeMesh.renderOrder = 0;
     cloudMesh.renderOrder = 1;
 
     globeGroup.add(cloudMesh);
@@ -541,13 +534,12 @@ export class PlanetSystem {
     // Spike length extends beyond planet
     const spikeLength = planetRadius * 2.5;
     const spikeRadius = planetRadius * 0.02; // Thin spike
-    
-    // Create cylinder for the spike (along Y-axis)
-    // The orient node's Y-axis is already aligned with the IAU pole direction
-    const spikeGeo = new THREE.CylinderGeometry(spikeRadius, spikeRadius, spikeLength, 8);
-    // Let the spike participate normally in the depth buffer so it gets
-    // occluded by the globe when behind it.
-    const spikeMat = new THREE.LineBasicMaterial({
+
+    // Create a thin line for the spike (along Y-axis)
+    // The orient node's Y-axis is already aligned with the IAU pole direction.
+    // Use normal depth testing/writing so the spike will be occluded by the globe
+    // when it is behind it (same approach as the orbital lines).
+    const spikeMaterial = new THREE.LineBasicMaterial({
       color: 0xffff00, // Yellow for visibility
       linewidth: 2,
       transparent: true,
@@ -555,31 +547,24 @@ export class PlanetSystem {
       depthTest: true,
       depthWrite: true
     });
+
     const spikeGeometry = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(0, -spikeLength / 2, 0),
       new THREE.Vector3(0, spikeLength / 2, 0)
     ]);
-    const spike = new THREE.Line(spikeGeometry, spikeMat);
-      spike.renderOrder = 0; // Keep spike in the normal render pass
+
+    const spike = new THREE.Line(spikeGeometry, spikeMaterial);
+    // Do NOT force renderOrder; let depthTest/depthWrite determine occlusion
     poleGroup.add(spike);
     
     // Create N label (north pole, top)
     const nLabel = this.createTextSprite('N', planetRadius * 0.15);
     nLabel.position.y = spikeLength / 2 + planetRadius * 0.2;
-    // Make the label participate in depth testing so it can be occluded by the globe
-    if (nLabel.material) {
-      nLabel.material.depthTest = true;
-      nLabel.material.depthWrite = false;
-    }
     poleGroup.add(nLabel);
     
     // Create S label (south pole, bottom)
     const sLabel = this.createTextSprite('S', planetRadius * 0.15);
     sLabel.position.y = -(spikeLength / 2 + planetRadius * 0.2);
-    if (sLabel.material) {
-      sLabel.material.depthTest = true;
-      sLabel.material.depthWrite = false;
-    }
     poleGroup.add(sLabel);
     
     // Add to orient node - pole spike stays fixed, doesn't rotate with planet
@@ -655,19 +640,19 @@ export class PlanetSystem {
       console.warn('Cannot create orbital lines: no ephemeris data');
       return;
     }
-
+    
     const THREE = this.THREE;
-
+    
     for (const bodyId of PLANET_IDS) {
       // Skip the Sun
       if (bodyId === 10) continue;
-
+      
       const rows = this.ephemerisData[bodyId];
       if (!rows || rows.length < 2) {
         console.warn(`Insufficient data for body ${bodyId}, skipping orbital line`);
         continue;
       }
-
+      
       // Create line geometry from ephemeris positions
       const points = [];
       for (const row of rows) {
@@ -681,37 +666,33 @@ export class PlanetSystem {
           ));
         }
       }
-
+      
       // Need at least 3 points for a meaningful line
       if (points.length < 3) {
         console.warn(`Not enough valid points for body ${bodyId}, skipping orbital line`);
         continue;
       }
-
+      
       // Close the orbit by connecting back to start
       points.push(points[0].clone());
-
+      
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
       const material = new THREE.LineBasicMaterial({
         color: this.getPlanetColor(bodyId),
         transparent: true,
         opacity: 0.5,
         depthTest: true,
-        // Do not write to the depth buffer for orbit lines. We'll render them
-        // before planets so planets naturally occlude them. This matches the
-        // old web behavior and avoids lines poking through alpha-tested layers.
-        depthWrite: false,
+        depthWrite: true,
         linewidth: 2 // Note: linewidth > 1 only works with WebGL renderer on some systems
       });
-
+      
       const line = new THREE.Line(geometry, material);
       line.name = `${PLANET_NAMES[bodyId]}_orbit`;
-      // Render orbital lines first
-      line.renderOrder = -1;
+      // Don't set renderOrder - let it render normally with depth test
       this.scene.add(line);
-
+      
       this.orbitalLines.set(bodyId, line);
-
+      
       console.log(`Created orbital line for ${PLANET_NAMES[bodyId]} with ${points.length} points`);
     }
   }
