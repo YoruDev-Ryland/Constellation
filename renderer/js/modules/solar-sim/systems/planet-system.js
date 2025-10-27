@@ -521,7 +521,7 @@ export class PlanetSystem {
         map: saturnData.ring,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 1.0,
+        opacity: 1.15, // Increased opacity by 15%
         alphaTest: 0.01 // Helps with transparency
       });
     } else {
@@ -1056,7 +1056,23 @@ export class PlanetSystem {
         const innerRad = (74500 / KM_PER_UNIT) * scale;
         const outerRad = (140220 / KM_PER_UNIT) * scale;
         nodes.ring.geometry.dispose();
-        nodes.ring.geometry = new this.THREE.RingGeometry(innerRad, outerRad, 128, 4);
+        
+        const newRingGeo = new this.THREE.RingGeometry(innerRad, outerRad, 128, 4);
+        
+        // Reapply custom UV mapping for proper ring texture display
+        const pos = newRingGeo.attributes.position;
+        const uvs = newRingGeo.attributes.uv;
+        const center = new this.THREE.Vector3(0, 0, 0);
+        
+        for (let i = 0; i < pos.count; i++) {
+          const vertex = new this.THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+          const dist = vertex.distanceTo(center);
+          const radialPos = (dist - innerRad) / (outerRad - innerRad);
+          uvs.setXY(i, radialPos, 0.5);
+        }
+        uvs.needsUpdate = true;
+        
+        nodes.ring.geometry = newRingGeo;
       }
       
       // Update pole spike if present
