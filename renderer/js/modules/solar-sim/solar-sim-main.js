@@ -483,6 +483,14 @@ export class SolarSimulator {
   dispose() {
     this.stopAnimation();
     
+    if (this.planetSystem) {
+      this.planetSystem.dispose();
+    }
+    
+    if (this.moonSystem) {
+      this.moonSystem.dispose();
+    }
+    
     if (this.sunDebugPanel) {
       this.sunDebugPanel.dispose();
     }

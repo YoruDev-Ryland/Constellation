@@ -688,90 +688,70 @@ export class PlanetSystem {
 
   /**
    * Create orbital lines for all planets
-   * Uses the exact same calculation as ephemeris generator to ensure perfect alignment
+   * Uses ephemeris data (if available) to draw orbits so they exactly match
+   * the positions used for planet placement. This is the previous implementation
+   * that was used before the analytic rework.
    */
   createOrbitalLines() {
-    const THREE = this.THREE;
-    
-    // Orbital elements (must match ephemeris-generator.js exactly)
-    const ORBITAL_ELEMENTS = {
-      199: { a: 0.387098, e: 0.205630, i: 7.005,   Omega: 48.331,   omega: 29.124,   L0: 252.251, period: 87.969 },
-      299: { a: 0.723332, e: 0.006772, i: 3.395,   Omega: 76.680,   omega: 54.884,   L0: 181.979, period: 224.701 },
-      399: { a: 1.000003, e: 0.016709, i: 0.0,     Omega: 0.0,      omega: 102.937,  L0: 100.464, period: 365.256 },
-      499: { a: 1.523710, e: 0.093394, i: 1.850,   Omega: 49.558,   omega: 286.502,  L0: 355.453, period: 686.980 },
-      599: { a: 5.202887, e: 0.048498, i: 1.303,   Omega: 100.464,  omega: 273.867,  L0: 34.396,  period: 4332.589 },
-      699: { a: 9.536676, e: 0.053862, i: 2.485,   Omega: 113.665,  omega: 339.392,  L0: 49.954,  period: 10759.22 },
-      799: { a: 19.18917, e: 0.047257, i: 0.773,   Omega: 74.006,   omega: 96.998,   L0: 313.232, period: 30685.4 },
-      899: { a: 30.06992, e: 0.008606, i: 1.770,   Omega: 131.784,  omega: 273.187,  L0: 304.880, period: 60189.0 },
-      999: { a: 39.48211, e: 0.248808, i: 17.140,  Omega: 110.299,  omega: 113.834,  L0: 238.929, period: 90560.0 }
-    };
-    
-    const ORBIT_SAMPLES = 512; // Number of points around the orbit
-    
-    // Get current JD to calculate current mean anomaly offset
-    // Prefer the simulation JD (from updatePositions); fallback to real now.
-    const currentJD = (this.currentJD != null) ? this.currentJD : this.dateToJD(new Date());
-
-    // Remove any existing orbit lines to avoid duplicates and stale phases
-    for (const [id, line] of this.orbitalLines) {
-      if (line && line.geometry) line.geometry.dispose();
-      if (line && line.material) line.material.dispose();
-      if (line && line.parent) line.parent.remove(line);
+    if (!this.ephemerisData) {
+      console.warn('Cannot create orbital lines: no ephemeris data');
+      return;
     }
-    this.orbitalLines.clear();
-    const J2000 = 2451545.0;
-    
+
+    const THREE = this.THREE;
+
     for (const bodyId of PLANET_IDS) {
       // Skip the Sun
       if (bodyId === 10) continue;
-      
-      const elem = ORBITAL_ELEMENTS[bodyId];
-      if (!elem) continue;
-      
+
+      const rows = this.ephemerisData[bodyId];
+      if (!rows || rows.length < 2) {
+        console.warn(`Insufficient data for body ${bodyId}, skipping orbital line`);
+        continue;
+      }
+
+      // Create line geometry from ephemeris positions
       const points = [];
-      
-      // Calculate current mean anomaly for this planet to use as phase offset
-      const T = currentJD - J2000;
-      const L0 = elem.L0 * (Math.PI / 180);
-      const omega = elem.omega * (Math.PI / 180);
-      const Omega = elem.Omega * (Math.PI / 180);
-      const L = L0 + (2 * Math.PI * T / elem.period);
-      const perihelionLongitude = omega + Omega;
-      const currentM = L - perihelionLongitude;
-      
-      // Generate complete orbit, but start from the exact current position as the first vertex
-      // to guarantee the visible line passes through the planet right now.
-      {
-        // j = 0 exact current point
-        const [x0, y0, z0] = this.calculatePositionFromMeanAnomaly(elem, currentM);
-        points.push(new THREE.Vector3(x0 / KM_PER_UNIT, y0 / KM_PER_UNIT, z0 / KM_PER_UNIT));
-        // Remaining samples around the ellipse
-        for (let j = 1; j < ORBIT_SAMPLES; j++) {
-          const M = currentM + (2 * Math.PI * j) / ORBIT_SAMPLES;
-          const [x, y, z] = this.calculatePositionFromMeanAnomaly(elem, M);
-          points.push(new THREE.Vector3(x / KM_PER_UNIT, y / KM_PER_UNIT, z / KM_PER_UNIT));
+      for (const row of rows) {
+        const [jd, x, y, z] = row;
+        // Validate that we have real numbers
+        if (isFinite(x) && isFinite(y) && isFinite(z)) {
+          points.push(new THREE.Vector3(
+            x / KM_PER_UNIT,
+            y / KM_PER_UNIT,
+            z / KM_PER_UNIT
+          ));
         }
       }
-      
+
+      // Need at least 3 points for a meaningful line
+      if (points.length < 3) {
+        console.warn(`Not enough valid points for body ${bodyId}, skipping orbital line`);
+        continue;
+      }
+
+      // Close the orbit by connecting back to start
+      points.push(points[0].clone());
+
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
       const material = new THREE.LineBasicMaterial({
         color: this.getPlanetColor(bodyId),
         transparent: true,
         opacity: 0.5,
         depthTest: true,
-        depthWrite: false,
-        linewidth: 2
+        depthWrite: false, // Don't write to depth buffer for transparent lines
+        linewidth: 2 // Note: linewidth > 1 only works with WebGL renderer on some systems
       });
-      
-      const line = new THREE.LineLoop(geometry, material);
-      line.name = `${PLANET_NAMES[bodyId]}_orbit`;
-      this.scene.add(line);
-      
-      this.orbitalLines.set(bodyId, line);
-    }
 
-    // Record the JD we phased to
-    this.orbitLinesSyncedJD = currentJD;
+      const line = new THREE.Line(geometry, material);
+      line.name = `${PLANET_NAMES[bodyId]}_orbit`;
+      // Don't set renderOrder - let it render normally with depth test
+      this.scene.add(line);
+
+      this.orbitalLines.set(bodyId, line);
+      
+      console.log(`Created orbital line for ${PLANET_NAMES[bodyId]} with ${points.length} points`);
+    }
   }
 
   /**
@@ -779,60 +759,23 @@ export class PlanetSystem {
    * Cheap enough to call once after time is known; avoid calling every frame.
    */
   updateOrbitalLinesPhase(jd) {
-    if (!this.orbitalLines || this.orbitalLines.size === 0) {
-      // If lines aren't created yet, create them (uses this.currentJD)
-      this.currentJD = jd;
-      this.createOrbitalLines();
+    // Throttle updates: only update if JD has changed significantly
+    if (this.orbitLinesSyncedJD != null && Math.abs(jd - this.orbitLinesSyncedJD) < 0.01) {
       return;
     }
 
-    const THREE = this.THREE;
-    const ORBITAL_ELEMENTS = {
-      199: { a: 0.387098, e: 0.205630, i: 7.005,   Omega: 48.331,   omega: 29.124,   L0: 252.251, period: 87.969 },
-      299: { a: 0.723332, e: 0.006772, i: 3.395,   Omega: 76.680,   omega: 54.884,   L0: 181.979, period: 224.701 },
-      399: { a: 1.000003, e: 0.016709, i: 0.0,     Omega: 0.0,      omega: 102.937,  L0: 100.464, period: 365.256 },
-      499: { a: 1.523710, e: 0.093394, i: 1.850,   Omega: 49.558,   omega: 286.502,  L0: 355.453, period: 686.980 },
-      599: { a: 5.202887, e: 0.048498, i: 1.303,   Omega: 100.464,  omega: 273.867,  L0: 34.396,  period: 4332.589 },
-      699: { a: 9.536676, e: 0.053862, i: 2.485,   Omega: 113.665,  omega: 339.392,  L0: 49.954,  period: 10759.22 },
-      799: { a: 19.18917, e: 0.047257, i: 0.773,   Omega: 74.006,   omega: 96.998,   L0: 313.232, period: 30685.4 },
-      899: { a: 30.06992, e: 0.008606, i: 1.770,   Omega: 131.784,  omega: 273.187,  L0: 304.880, period: 60189.0 },
-      999: { a: 39.48211, e: 0.248808, i: 17.140,  Omega: 110.299,  omega: 113.834,  L0: 238.929, period: 90560.0 }
-    };
-    const ORBIT_SAMPLES = 512;
-    const J2000 = 2451545.0;
-
-    for (const bodyId of PLANET_IDS) {
-      if (bodyId === 10) continue;
-      const elem = ORBITAL_ELEMENTS[bodyId];
-      if (!elem) continue;
-
-      const T = jd - J2000;
-      const L0 = elem.L0 * (Math.PI / 180);
-      const omega = elem.omega * (Math.PI / 180);
-      const Omega = elem.Omega * (Math.PI / 180);
-      const L = L0 + (2 * Math.PI * T / elem.period);
-      const perihelionLongitude = omega + Omega;
-      const currentM = L - perihelionLongitude;
-
-      const points = [];
-      // exact current point first
-      {
-        const [x0, y0, z0] = this.calculatePositionFromMeanAnomaly(elem, currentM);
-        points.push(new THREE.Vector3(x0 / KM_PER_UNIT, y0 / KM_PER_UNIT, z0 / KM_PER_UNIT));
-        for (let j = 1; j < ORBIT_SAMPLES; j++) {
-          const M = currentM + (2 * Math.PI * j) / ORBIT_SAMPLES;
-          const [x, y, z] = this.calculatePositionFromMeanAnomaly(elem, M);
-          points.push(new THREE.Vector3(x / KM_PER_UNIT, y / KM_PER_UNIT, z / KM_PER_UNIT));
-        }
-      }
-
-      const line = this.orbitalLines.get(bodyId);
-      if (line) {
-        if (line.geometry) line.geometry.dispose();
-        line.geometry = new THREE.BufferGeometry().setFromPoints(points);
-      }
+    // If we don't have ephemeris-based lines, (re)create them from ephemeris data
+    if (!this.ephemerisData || !this.orbitalLines || this.orbitalLines.size === 0) {
+      this.currentJD = jd;
+      this.createOrbitalLines();
+      this.orbitLinesSyncedJD = jd;
+      return;
     }
 
+    // Otherwise, rebuild from ephemeris to ensure alignment with current JD
+    // Dispose existing lines first
+    this.disposeOrbitalLines();
+    this.createOrbitalLines();
     this.orbitLinesSyncedJD = jd;
   }
   
@@ -1054,12 +997,13 @@ export class PlanetSystem {
     this.ephemerisData = data;
     // Defer creating orbital lines until we know the simulation JD via updatePositions.
     // If updatePositions hasn't been called yet, we can still create using real now as a fallback.
-    if (this.currentJD != null) {
+    // Only create if they don't already exist to avoid recreating
+    if (this.orbitalLines.size === 0) {
       this.createOrbitalLines();
-    } else {
-      // Create once so something is visible; it will be re-phased on first updatePositions call.
-      this.createOrbitalLines();
-      this.orbitLinesSyncedJD = null; // force a re-phase on first update
+      if (this.currentJD == null) {
+        // force a re-phase on first update if we don't have a JD yet
+        this.orbitLinesSyncedJD = null;
+      }
     }
   }
   
@@ -1154,6 +1098,93 @@ export class PlanetSystem {
   setOrbitalLinesVisible(visible) {
     for (const line of this.orbitalLines.values()) {
       line.visible = visible;
+    }
+  }
+
+  /**
+   * Dispose of all orbital lines and their resources
+   */
+  disposeOrbitalLines() {
+    for (const [id, line] of this.orbitalLines) {
+      if (line) {
+        // Remove from scene first
+        if (line.parent) {
+          line.parent.remove(line);
+        }
+        // Dispose geometry
+        if (line.geometry) {
+          line.geometry.dispose();
+        }
+        // Dispose material
+        if (line.material) {
+          if (Array.isArray(line.material)) {
+            line.material.forEach(mat => mat.dispose());
+          } else {
+            line.material.dispose();
+          }
+        }
+      }
+    }
+    this.orbitalLines.clear();
+    this.orbitLinesSyncedJD = null;
+  }
+
+  /**
+   * Dispose of all resources
+   */
+  dispose() {
+    // Dispose orbital lines
+    this.disposeOrbitalLines();
+    
+    // Dispose planet meshes and textures
+    for (const [bodyId, nodes] of this.planetMeshes) {
+      if (nodes.bodyGroup && nodes.bodyGroup.parent) {
+        nodes.bodyGroup.parent.remove(nodes.bodyGroup);
+      }
+      
+      // Dispose geometries
+      if (nodes.globe) {
+        const globeMesh = nodes.globe.children && nodes.globe.children[0];
+        if (globeMesh && globeMesh.geometry) {
+          globeMesh.geometry.dispose();
+        }
+        if (globeMesh && globeMesh.material) {
+          if (Array.isArray(globeMesh.material)) {
+            globeMesh.material.forEach(mat => mat.dispose());
+          } else {
+            globeMesh.material.dispose();
+          }
+        }
+      }
+      
+      if (nodes.ring && nodes.ring.geometry) {
+        nodes.ring.geometry.dispose();
+      }
+      if (nodes.ring && nodes.ring.material) {
+        nodes.ring.material.dispose();
+      }
+      
+      if (nodes.clouds && nodes.clouds.geometry) {
+        nodes.clouds.geometry.dispose();
+      }
+      if (nodes.clouds && nodes.clouds.material) {
+        nodes.clouds.material.dispose();
+      }
+    }
+    
+    // Dispose textures
+    for (const texture of this.textures.values()) {
+      if (texture && texture.dispose) {
+        texture.dispose();
+      }
+    }
+    
+    this.planetMeshes.clear();
+    this.textures.clear();
+    
+    // Dispose sun system
+    if (this.sunSystem && this.sunSystem.dispose) {
+      this.sunSystem.dispose();
     }
   }
 }
