@@ -18,6 +18,7 @@ export class SunSystem {
     
     // Physical parameters
     this.sunRadius = 1.0; // Will be set from actual size
+    this.baseRadius = 1.0; // Store base radius for scaling
     this.surfaceTemperature = 5778; // Kelvin
     this.coronaTemperature = 2000000; // Kelvin (corona is much hotter)
 
@@ -34,6 +35,7 @@ export class SunSystem {
    */
   createSun(radius) {
     this.sunRadius = radius;
+    this.baseRadius = radius; // Store base radius for scaling
     const sunGroup = new this.THREE.Group();
     sunGroup.name = 'RealisticSun';
 
@@ -439,6 +441,27 @@ export class SunSystem {
       if (params.activeRegions !== undefined) uniforms.uActiveRegions.value = params.activeRegions;
       if (params.turbulenceScale !== undefined) uniforms.uTurbulenceScale.value = params.turbulenceScale;
       if (params.turbulenceSpeed !== undefined) uniforms.uTurbulenceSpeed.value = params.turbulenceSpeed;
+    }
+  }
+
+  /**
+   * Set sun scale
+   * @param {number} scale - Scale multiplier
+   */
+  setScale(scale) {
+    const newRadius = this.baseRadius * scale;
+    this.sunRadius = newRadius;
+    
+    // Update photosphere geometry
+    if (this.sunMesh) {
+      this.sunMesh.geometry.dispose();
+      this.sunMesh.geometry = new this.THREE.SphereGeometry(newRadius, 128, 128);
+    }
+    
+    // Update corona geometry
+    if (this.coronaMesh) {
+      this.coronaMesh.geometry.dispose();
+      this.coronaMesh.geometry = new this.THREE.SphereGeometry(newRadius * 1.15, 64, 64);
     }
   }
 

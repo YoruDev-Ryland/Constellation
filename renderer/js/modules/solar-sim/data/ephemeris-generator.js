@@ -8,24 +8,25 @@ import { AU_KM, PLANET_IDS } from '../core/constants.js';
 import { dateToJD } from '../core/time-system.js';
 
 /**
- * Simplified orbital elements (approximate, J2000 epoch)
+ * Simplified orbital elements (J2000.0 epoch = JD 2451545.0)
  * a: semi-major axis (AU)
  * e: eccentricity
  * i: inclination (degrees)
  * Omega: longitude of ascending node (degrees)
  * omega: argument of periapsis (degrees)
+ * L0: mean longitude at J2000.0 epoch (degrees)
  * period: orbital period (days)
  */
 const ORBITAL_ELEMENTS = {
-  199: { a: 0.387, e: 0.206, i: 7.0,   Omega: 48.3,   omega: 29.1,   period: 87.97 },    // Mercury
-  299: { a: 0.723, e: 0.007, i: 3.4,   Omega: 76.7,   omega: 54.9,   period: 224.7 },    // Venus
-  399: { a: 1.000, e: 0.017, i: 0.0,   Omega: 0.0,    omega: 102.9,  period: 365.26 },   // Earth
-  499: { a: 1.524, e: 0.093, i: 1.8,   Omega: 49.6,   omega: 286.5,  period: 686.98 },   // Mars
-  599: { a: 5.203, e: 0.048, i: 1.3,   Omega: 100.5,  omega: 273.9,  period: 4332.6 },   // Jupiter
-  699: { a: 9.537, e: 0.054, i: 2.5,   Omega: 113.7,  omega: 339.4,  period: 10759 },    // Saturn
-  799: { a: 19.19, e: 0.047, i: 0.8,   Omega: 74.0,   omega: 96.6,   period: 30687 },    // Uranus
-  899: { a: 30.07, e: 0.009, i: 1.8,   Omega: 131.8,  omega: 273.2,  period: 60190 },    // Neptune
-  999: { a: 39.48, e: 0.249, i: 17.2,  Omega: 110.3,  omega: 113.8,  period: 90560 }     // Pluto
+  199: { a: 0.387098, e: 0.205630, i: 7.005,   Omega: 48.331,   omega: 29.124,   L0: 252.251, period: 87.969 },    // Mercury
+  299: { a: 0.723332, e: 0.006772, i: 3.395,   Omega: 76.680,   omega: 54.884,   L0: 181.979, period: 224.701 },   // Venus
+  399: { a: 1.000003, e: 0.016709, i: 0.0,     Omega: 0.0,      omega: 102.937,  L0: 100.464, period: 365.256 },   // Earth
+  499: { a: 1.523710, e: 0.093394, i: 1.850,   Omega: 49.558,   omega: 286.502,  L0: 355.453, period: 686.980 },   // Mars
+  599: { a: 5.202887, e: 0.048498, i: 1.303,   Omega: 100.464,  omega: 273.867,  L0: 34.396,  period: 4332.589 },  // Jupiter
+  699: { a: 9.536676, e: 0.053862, i: 2.485,   Omega: 113.665,  omega: 339.392,  L0: 49.954,  period: 10759.22 },  // Saturn
+  799: { a: 19.18917, e: 0.047257, i: 0.773,   Omega: 74.006,   omega: 96.998,   L0: 313.232, period: 30685.4 },   // Uranus
+  899: { a: 30.06992, e: 0.008606, i: 1.770,   Omega: 131.784,  omega: 273.187,  L0: 304.880, period: 60189.0 },   // Neptune
+  999: { a: 39.48211, e: 0.248808, i: 17.140,  Omega: 110.299,  omega: 113.834,  L0: 238.929, period: 90560.0 }    // Pluto
 };
 
 /**
@@ -50,18 +51,33 @@ function generatePlanetEphemeris(bodyId, startJD, days, step) {
   const i = elem.i * (Math.PI / 180); // Inclination in radians
   const Omega = elem.Omega * (Math.PI / 180); // Longitude of ascending node in radians
   const omega = elem.omega * (Math.PI / 180); // Argument of periapsis in radians
+  const L0 = elem.L0 * (Math.PI / 180); // Mean longitude at J2000.0 in radians
   const period = elem.period; // Orbital period in days
+  
+  // J2000.0 epoch
+  const J2000 = 2451545.0;
   
   for (let d = 0; d <= days; d += step) {
     const jd = startJD + d;
     
-    // Mean anomaly
-    const M = (2 * Math.PI * d / period) % (2 * Math.PI);
+    // Days since J2000.0 epoch
+    const T = jd - J2000;
     
-    // Solve for eccentric anomaly (simple iteration)
+    // Mean longitude at current time
+    const L = L0 + (2 * Math.PI * T / period);
+    
+    // Longitude of perihelion
+    const perihelionLongitude = omega + Omega;
+    
+    // Mean anomaly = Mean longitude - longitude of perihelion
+    const M = L - perihelionLongitude;
+    
+    // Solve for eccentric anomaly using Newton's method (more accurate)
     let E = M;
-    for (let iter = 0; iter < 5; iter++) {
-      E = M + e * Math.sin(E);
+    for (let iter = 0; iter < 10; iter++) {
+      const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+      E -= dE;
+      if (Math.abs(dE) < 1e-8) break;
     }
     
     // True anomaly
@@ -108,8 +124,11 @@ function generatePlanetEphemeris(bodyId, startJD, days, step) {
  * Generate ephemeris data for all planets
  */
 export function generateEphemerisData() {
-  const startDate = new Date('2025-01-01T00:00:00Z');
+  // Use current date as center, generate data for ±2 years
+  const now = new Date();
+  const startDate = new Date(now.getTime() - (730 * 24 * 60 * 60 * 1000)); // 2 years ago
   const startJD = dateToJD(startDate);
+  const totalDays = 730 * 2; // 4 years total span
   
   const ephemerisData = {};
   
@@ -117,24 +136,25 @@ export function generateEphemerisData() {
     if (bodyId === 10) {
       // Sun at origin
       const data = [];
-      for (let i = 0; i <= 365; i += 1) {
+      for (let i = 0; i <= totalDays; i += 1) {
         data.push([startJD + i, 0, 0, 0]);
       }
       ephemerisData[bodyId] = data;
     } else {
       const elem = ORBITAL_ELEMENTS[bodyId];
       if (elem) {
-        // Sample the orbit with enough points for a smooth line
-        // Use the planet's period to determine sampling
+        // Sample with high enough resolution for smooth interpolation
+        // Use smaller step for inner planets, larger for outer
         const period = elem.period;
-        const numSamples = Math.min(Math.max(Math.floor(period / 2), 100), 500);
-        const step = period / numSamples;
+        const samplesPerOrbit = 200; // 200 points per orbit
+        const step = Math.max(1, period / samplesPerOrbit); // At least 1 day
         
-        ephemerisData[bodyId] = generatePlanetEphemeris(bodyId, startJD, period, step);
+        ephemerisData[bodyId] = generatePlanetEphemeris(bodyId, startJD, totalDays, step);
       }
     }
   }
   
-  console.log('Generated simplified ephemeris data for', Object.keys(ephemerisData).length, 'bodies');
+  console.log('Generated ephemeris data for', Object.keys(ephemerisData).length, 'bodies');
+  console.log(`Time span: ${startDate.toISOString()} to ${new Date(startDate.getTime() + totalDays * 24 * 60 * 60 * 1000).toISOString()}`);
   return ephemerisData;
 }

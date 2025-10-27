@@ -57,6 +57,10 @@ export class UIController {
         <div class="control-panel">
           <h3>Scale</h3>
           <div class="scale-control">
+            <label>Sun: <span id="ss-sun-scale-val">1×</span></label>
+            <input type="range" id="ss-sun-scale" min="1" max="100" value="1" step="1">
+          </div>
+          <div class="scale-control">
             <label>Planets: <span id="ss-planet-scale-val">1×</span></label>
             <input type="range" id="ss-planet-scale" min="1" max="500" value="1" step="1">
           </div>
@@ -186,6 +190,12 @@ export class UIController {
       this.trigger('satelliteGroupChange', e.target.value));
     
     // Scale controls
+    document.getElementById('ss-sun-scale')?.addEventListener('input', (e) => {
+      const value = parseFloat(e.target.value);
+      document.getElementById('ss-sun-scale-val').textContent = `${value}×`;
+      this.trigger('sunScaleChange', value);
+    });
+    
     document.getElementById('ss-planet-scale')?.addEventListener('input', (e) => {
       const value = parseFloat(e.target.value);
       document.getElementById('ss-planet-scale-val').textContent = `${value}×`;

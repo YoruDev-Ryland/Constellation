@@ -7,6 +7,7 @@ import { KM_PER_UNIT } from '../core/constants.js';
 
 /**
  * Moon data: radius (km), orbital radius (km), orbital period (days), color fallback
+ * inclination: orbital inclination in degrees (relative to parent planet's equatorial plane)
  */
 export const MOON_DATA = {
   // Earth's Moon
@@ -16,6 +17,7 @@ export const MOON_DATA = {
     radius: 1737.4,
     orbitRadius: 384400,
     orbitPeriod: 27.322,
+    inclination: 5.145, // Inclination to ecliptic (not equator)
     color: 0x9a9a9a,
     texture: '8k_moon.jpg',
     rotationHours: 655.728 // Tidally locked (same as orbital period)
@@ -28,6 +30,7 @@ export const MOON_DATA = {
     radius: 11.267,
     orbitRadius: 9376,
     orbitPeriod: 0.319,
+    inclination: 1.08, // degrees to Mars equator
     color: 0x6b5d54,
     texture: null,
     rotationHours: 7.65 // Tidally locked
@@ -38,6 +41,7 @@ export const MOON_DATA = {
     radius: 6.2,
     orbitRadius: 23463,
     orbitPeriod: 1.263,
+    inclination: 1.79, // degrees to Mars equator
     color: 0x7a6e5f,
     texture: null,
     rotationHours: 30.3 // Tidally locked
@@ -50,6 +54,7 @@ export const MOON_DATA = {
     radius: 1821.6,
     orbitRadius: 421700,
     orbitPeriod: 1.769,
+    inclination: 0.05, // degrees to Jupiter equator
     color: 0xffdd77,
     texture: null,
     rotationHours: 42.46 // Tidally locked
@@ -60,6 +65,7 @@ export const MOON_DATA = {
     radius: 1560.8,
     orbitRadius: 671034,
     orbitPeriod: 3.551,
+    inclination: 0.47, // degrees to Jupiter equator
     color: 0xddb588,
     texture: null,
     rotationHours: 85.23 // Tidally locked
@@ -70,6 +76,7 @@ export const MOON_DATA = {
     radius: 2634.1,
     orbitRadius: 1070412,
     orbitPeriod: 7.155,
+    inclination: 0.20, // degrees to Jupiter equator
     color: 0xa89988,
     texture: null,
     rotationHours: 171.7 // Tidally locked
@@ -80,6 +87,7 @@ export const MOON_DATA = {
     radius: 2410.3,
     orbitRadius: 1882709,
     orbitPeriod: 16.689,
+    inclination: 0.51, // degrees to Jupiter equator
     color: 0x6d6654,
     texture: null,
     rotationHours: 400.5 // Tidally locked
@@ -92,6 +100,7 @@ export const MOON_DATA = {
     radius: 198.2,
     orbitRadius: 185539,
     orbitPeriod: 0.942,
+    inclination: 1.53, // degrees to Saturn equator
     color: 0xc9c5c0,
     texture: null,
     rotationHours: 22.6 // Tidally locked
@@ -102,6 +111,7 @@ export const MOON_DATA = {
     radius: 252.1,
     orbitRadius: 237948,
     orbitPeriod: 1.370,
+    inclination: 0.02, // degrees to Saturn equator
     color: 0xf0f0f0,
     texture: null,
     rotationHours: 32.9 // Tidally locked
@@ -112,6 +122,7 @@ export const MOON_DATA = {
     radius: 531.1,
     orbitRadius: 294619,
     orbitPeriod: 1.888,
+    inclination: 1.09, // degrees to Saturn equator
     color: 0xe8e6e3,
     texture: null,
     rotationHours: 45.3 // Tidally locked
@@ -122,6 +133,7 @@ export const MOON_DATA = {
     radius: 561.4,
     orbitRadius: 377396,
     orbitPeriod: 2.737,
+    inclination: 0.02, // degrees to Saturn equator
     color: 0xd5d3cf,
     texture: null,
     rotationHours: 65.7 // Tidally locked
@@ -132,6 +144,7 @@ export const MOON_DATA = {
     radius: 763.8,
     orbitRadius: 527108,
     orbitPeriod: 4.518,
+    inclination: 0.35, // degrees to Saturn equator
     color: 0xc8c6c2,
     texture: null,
     rotationHours: 108.4 // Tidally locked
@@ -142,6 +155,7 @@ export const MOON_DATA = {
     radius: 2574.7,
     orbitRadius: 1221870,
     orbitPeriod: 15.945,
+    inclination: 0.33, // degrees to Saturn equator
     color: 0xffa847,
     texture: null,
     rotationHours: 382.7 // Tidally locked
@@ -152,6 +166,7 @@ export const MOON_DATA = {
     radius: 734.5,
     orbitRadius: 3560820,
     orbitPeriod: 79.330,
+    inclination: 15.47, // degrees to Saturn equator (highly inclined!)
     color: 0x8a7f6f,
     texture: null,
     rotationHours: 1903.9 // Tidally locked
@@ -164,6 +179,7 @@ export const MOON_DATA = {
     radius: 578.9,
     orbitRadius: 190900,
     orbitPeriod: 2.520,
+    inclination: 0.26, // degrees to Uranus equator
     color: 0xb8b5b0,
     texture: null,
     rotationHours: 60.5 // Tidally locked
@@ -174,6 +190,7 @@ export const MOON_DATA = {
     radius: 584.7,
     orbitRadius: 266000,
     orbitPeriod: 4.144,
+    inclination: 0.13, // degrees to Uranus equator
     color: 0x5a5550,
     texture: null,
     rotationHours: 99.5 // Tidally locked
@@ -184,6 +201,7 @@ export const MOON_DATA = {
     radius: 788.4,
     orbitRadius: 435910,
     orbitPeriod: 8.706,
+    inclination: 0.34, // degrees to Uranus equator
     color: 0xa39d95,
     texture: null,
     rotationHours: 208.9 // Tidally locked
@@ -194,6 +212,7 @@ export const MOON_DATA = {
     radius: 761.4,
     orbitRadius: 583520,
     orbitPeriod: 13.463,
+    inclination: 0.07, // degrees to Uranus equator
     color: 0x9a8f82,
     texture: null,
     rotationHours: 323.1 // Tidally locked
@@ -204,6 +223,7 @@ export const MOON_DATA = {
     radius: 235.8,
     orbitRadius: 129390,
     orbitPeriod: 1.413,
+    inclination: 4.22, // degrees to Uranus equator
     color: 0xc5c0ba,
     texture: null,
     rotationHours: 33.9 // Tidally locked
@@ -216,6 +236,7 @@ export const MOON_DATA = {
     radius: 1353.4,
     orbitRadius: 354759,
     orbitPeriod: -5.877, // Retrograde orbit
+    inclination: 156.87, // Highly inclined retrograde orbit!
     color: 0xf0e0d0,
     texture: null,
     rotationHours: -141.0 // Tidally locked, retrograde
@@ -228,6 +249,7 @@ export const MOON_DATA = {
     radius: 606.0,
     orbitRadius: 19591,
     orbitPeriod: 6.387,
+    inclination: 0.08, // degrees to Pluto's equator
     color: 0x8b8680,
     texture: null,
     rotationHours: 153.3 // Tidally locked
@@ -304,18 +326,13 @@ export class MoonSystem {
     const visualRadius = (moonData.radius / KM_PER_UNIT) * this.moonScaleMultiplier;
     const orbitRadius = moonData.orbitRadius / KM_PER_UNIT;
 
-    // Create node hierarchy: moonOrbit -> moonGroup -> moonSpin -> moonMesh
-    const moonOrbit = new this.THREE.Group();
-    moonOrbit.name = `${moonData.name}_orbit`;
-
+    // Simple hierarchy: moonGroup -> moonSpin -> moonMesh
+    // Position will be calculated directly in world space
     const moonGroup = new this.THREE.Group();
     moonGroup.name = `${moonData.name}_group`;
 
     const moonSpin = new this.THREE.Group();
     moonSpin.name = `${moonData.name}_spin`;
-
-    // Position moon at orbit radius
-    moonGroup.position.set(orbitRadius, 0, 0);
 
     // Create moon mesh
     const geometry = new this.THREE.SphereGeometry(visualRadius, 32, 32);
@@ -349,30 +366,32 @@ export class MoonSystem {
     const poleSpike = this.createPoleSpike(spikeHeight, moonData.color);
     moonSpin.add(poleSpike);
 
-    // Create orbit line
+    // Create orbit line (tilted by inclination)
     const orbitLine = this.createOrbitLine(orbitRadius, moonData.color);
-    moonOrbit.add(orbitLine);
+    if (moonData.inclination) {
+      orbitLine.rotation.x = (moonData.inclination * Math.PI) / 180;
+    }
+    parentPlanetGroup.add(orbitLine);
 
     // Assemble hierarchy
     moonSpin.add(moonMesh);
     moonGroup.add(moonSpin);
-    moonOrbit.add(moonGroup);
-    parentPlanetGroup.add(moonOrbit);
+    parentPlanetGroup.add(moonGroup);
 
-    // Store moon data
+    // Store moon data with starting orbital phase
     const moonObject = {
       id: moonId,
       name: moonData.name,
       parentId: moonData.parentId,
       data: moonData,
       nodes: {
-        orbit: moonOrbit,
         group: moonGroup,
         spin: moonSpin,
-        mesh: moonMesh
+        mesh: moonMesh,
+        orbitLine: orbitLine
       },
       orbitPhase: Math.random() * Math.PI * 2, // Random starting phase
-      rotationAngle: 0
+      orbitRadius: orbitRadius // Store scaled orbit radius
     };
 
     this.moons.set(moonId, moonObject);
@@ -477,14 +496,26 @@ export class MoonSystem {
       const direction = moon.data.orbitPeriod < 0 ? -1 : 1;
       
       moon.orbitPhase += angularVelocity * deltaTime * direction;
-      moon.nodes.orbit.rotation.y = moon.orbitPhase;
+      
+      // Calculate position in 3D space with inclination
+      const inclination = (moon.data.inclination || 0) * (Math.PI / 180);
+      
+      // Position in orbital plane
+      const x = moon.orbitRadius * Math.cos(moon.orbitPhase);
+      const y = moon.orbitRadius * Math.sin(moon.orbitPhase) * Math.cos(inclination);
+      const z = moon.orbitRadius * Math.sin(moon.orbitPhase) * Math.sin(inclination);
+      
+      // Set moon position directly (relative to parent planet)
+      moon.nodes.group.position.set(x, y, z);
 
-      // For tidally locked moons, the same face must always point toward the parent planet
-      // The moon is positioned at (orbitRadius, 0, 0) initially
-      // As moonOrbit rotates, we need moonSpin to counter-rotate to keep the same face pointing inward
-      // We need to rotate the same amount in the same direction to keep facing the center
-      // Adding PI makes the "back" of the texture face outward (so the "front" faces inward)
-      moon.nodes.spin.rotation.y = moon.orbitPhase + Math.PI;
+      // For tidally locked moons, calculate rotation to always face parent
+      // The moon needs to rotate to keep the same face pointing toward (0,0,0)
+      // Calculate the angle from moon to parent
+      const angleToParent = Math.atan2(z, x);
+      
+      // Rotate moon so it faces the parent
+      // Adding PI/2 because the "front" of the sphere is at +Z by default
+      moon.nodes.spin.rotation.y = -angleToParent + Math.PI / 2;
     }
   }
 

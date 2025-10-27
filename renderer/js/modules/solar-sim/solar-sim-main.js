@@ -367,6 +367,11 @@ export class SolarSimulator {
       this.planetSystem.setPlanetScale(scale);
     });
     
+    // Sun scale
+    this.uiController.on('sunScaleChange', (scale) => {
+      this.planetSystem.setSunScale(scale);
+    });
+    
     // Satellite scale
     this.uiController.on('satelliteScaleChange', (scale) => {
       this.satelliteSystem.setSatelliteScale(scale);
