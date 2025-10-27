@@ -140,31 +140,54 @@ export class CameraController {
     const multiplier = options.distanceMultiplier || 3;
     const targetDist = radius * multiplier;
     
-    // Calculate new camera position
-    const direction = this.camera.position.clone()
-      .sub(targetPos)
+    // Calculate direction from current camera position to target
+    const directionToTarget = targetPos.clone()
+      .sub(this.camera.position)
       .normalize();
-    const newCameraPos = targetPos.clone()
-      .add(direction.multiplyScalar(targetDist));
     
-    // Animate camera
-    gsap.to(this.camera.position, {
-      x: newCameraPos.x,
-      y: newCameraPos.y,
-      z: newCameraPos.z,
+    // New camera position: approach from current direction, end up at desired distance
+    const newCameraPos = targetPos.clone()
+      .sub(directionToTarget.multiplyScalar(targetDist));
+    
+    // Store starting positions
+    const startCameraPos = this.camera.position.clone();
+    const startTarget = this.controls.target.clone();
+    
+    // Temporarily disable following during transition
+    const oldFollowingObject = this.followingObject;
+    this.followingObject = null;
+    
+    // Create interpolation object for smooth animation
+    const animProxy = {
+      progress: 0
+    };
+    
+    // Animate using a single progress value
+    gsap.to(animProxy, {
+      progress: 1,
       duration: 2,
       ease: "power2.inOut",
-      onUpdate: () => this.controls.update()
+      onUpdate: () => {
+        const t = animProxy.progress;
+        
+        // Interpolate camera position
+        this.camera.position.lerpVectors(startCameraPos, newCameraPos, t);
+        
+        // Interpolate look-at target
+        this.controls.target.lerpVectors(startTarget, targetPos, t);
+        
+        // Update controls to apply the new orientation
+        this.controls.update();
+      },
+      onComplete: () => {
+        // Set following after animation completes
+        this.followingObject = object;
+        this.focusedObject = object;
+        this.focusedBodyId = bodyId;
+        this.updateCameraUp();
+        this.updateClipPlanes();
+      }
     });
-    
-    // Set target and following
-    this.controls.target.copy(targetPos);
-    this.followingObject = object;
-    this.focusedObject = object;
-    this.focusedBodyId = bodyId;
-    
-    this.updateCameraUp();
-    this.updateClipPlanes();
   }
   
   /**

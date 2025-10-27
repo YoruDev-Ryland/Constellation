@@ -86,17 +86,72 @@ export class UIController {
         
         <div class="control-panel">
           <h3>Focus</h3>
-          <div class="planet-buttons">
-            <button class="btn-planet" data-body="10">Sun</button>
-            <button class="btn-planet" data-body="199">Mercury</button>
-            <button class="btn-planet" data-body="299">Venus</button>
-            <button class="btn-planet" data-body="399">Earth</button>
-            <button class="btn-planet" data-body="499">Mars</button>
-            <button class="btn-planet" data-body="599">Jupiter</button>
-            <button class="btn-planet" data-body="699">Saturn</button>
-            <button class="btn-planet" data-body="799">Uranus</button>
-            <button class="btn-planet" data-body="899">Neptune</button>
-            <button class="btn-planet" data-body="999">Pluto</button>
+          <div class="focus-tree">
+            <div class="tree-item">
+              <button class="btn-planet" data-body="10">☉ Sun</button>
+            </div>
+            <div class="tree-item">
+              <button class="btn-planet" data-body="199">☿ Mercury</button>
+            </div>
+            <div class="tree-item">
+              <button class="btn-planet" data-body="299">♀ Venus</button>
+            </div>
+            <div class="tree-item">
+              <button class="btn-planet" data-body="399">♁ Earth</button>
+              <div class="tree-children">
+                <button class="btn-moon" data-body="301" data-parent="399">Moon</button>
+              </div>
+            </div>
+            <div class="tree-item">
+              <button class="btn-planet" data-body="499">♂ Mars</button>
+              <div class="tree-children">
+                <button class="btn-moon" data-body="401" data-parent="499">Phobos</button>
+                <button class="btn-moon" data-body="402" data-parent="499">Deimos</button>
+              </div>
+            </div>
+            <div class="tree-item">
+              <button class="btn-planet" data-body="599">♃ Jupiter</button>
+              <div class="tree-children">
+                <button class="btn-moon" data-body="501" data-parent="599">Io</button>
+                <button class="btn-moon" data-body="502" data-parent="599">Europa</button>
+                <button class="btn-moon" data-body="503" data-parent="599">Ganymede</button>
+                <button class="btn-moon" data-body="504" data-parent="599">Callisto</button>
+              </div>
+            </div>
+            <div class="tree-item">
+              <button class="btn-planet" data-body="699">♄ Saturn</button>
+              <div class="tree-children">
+                <button class="btn-moon" data-body="601" data-parent="699">Mimas</button>
+                <button class="btn-moon" data-body="602" data-parent="699">Enceladus</button>
+                <button class="btn-moon" data-body="603" data-parent="699">Tethys</button>
+                <button class="btn-moon" data-body="604" data-parent="699">Dione</button>
+                <button class="btn-moon" data-body="605" data-parent="699">Rhea</button>
+                <button class="btn-moon" data-body="606" data-parent="699">Titan</button>
+                <button class="btn-moon" data-body="608" data-parent="699">Iapetus</button>
+              </div>
+            </div>
+            <div class="tree-item">
+              <button class="btn-planet" data-body="799">♅ Uranus</button>
+              <div class="tree-children">
+                <button class="btn-moon" data-body="705" data-parent="799">Miranda</button>
+                <button class="btn-moon" data-body="701" data-parent="799">Ariel</button>
+                <button class="btn-moon" data-body="702" data-parent="799">Umbriel</button>
+                <button class="btn-moon" data-body="703" data-parent="799">Titania</button>
+                <button class="btn-moon" data-body="704" data-parent="799">Oberon</button>
+              </div>
+            </div>
+            <div class="tree-item">
+              <button class="btn-planet" data-body="899">♆ Neptune</button>
+              <div class="tree-children">
+                <button class="btn-moon" data-body="801" data-parent="899">Triton</button>
+              </div>
+            </div>
+            <div class="tree-item">
+              <button class="btn-planet" data-body="999">♇ Pluto</button>
+              <div class="tree-children">
+                <button class="btn-moon" data-body="901" data-parent="999">Charon</button>
+              </div>
+            </div>
           </div>
         </div>
     `;
@@ -164,6 +219,15 @@ export class UIController {
       btn.addEventListener('click', () => {
         const bodyId = parseInt(btn.dataset.body);
         this.trigger('focusPlanet', bodyId);
+      });
+    });
+    
+    // Moon focus buttons
+    document.querySelectorAll('.btn-moon').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const moonId = parseInt(btn.dataset.body);
+        const parentId = parseInt(btn.dataset.parent);
+        this.trigger('focusMoon', { moonId, parentId });
       });
     });
   }

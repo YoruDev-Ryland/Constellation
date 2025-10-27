@@ -5,6 +5,7 @@
 
 import { TimeManager } from './core/time-system.js';
 import { PlanetSystem } from './systems/planet-system.js';
+import { MoonSystem } from './systems/moon-system.js';
 import { SatelliteSystem } from './systems/satellite-system.js';
 import { CameraController } from './systems/camera-controller.js';
 import { LightingSystem } from './systems/lighting-system.js';
@@ -31,6 +32,7 @@ export class SolarSimulator {
     // Subsystems
     this.timeManager = null;
     this.planetSystem = null;
+    this.moonSystem = null;
     this.satelliteSystem = null;
     this.cameraController = null;
     this.lightingSystem = null;
@@ -122,6 +124,11 @@ export class SolarSimulator {
     // Initialize subsystems
     this.timeManager = new TimeManager();
     this.planetSystem = new PlanetSystem(this.scene, THREE);
+    
+    // Create texture loader for moon system
+    const textureLoader = new THREE.TextureLoader();
+    this.moonSystem = new MoonSystem(THREE, this.scene, textureLoader);
+    
     this.satelliteSystem = new SatelliteSystem(this.scene, THREE);
     this.cameraController = new CameraController(this.camera, this.controls, THREE);
     this.lightingSystem = new LightingSystem(this.scene, this.renderer, THREE);
@@ -135,6 +142,7 @@ export class SolarSimulator {
     
     // Initialize all systems
     await this.planetSystem.initialize();
+    await this.moonSystem.initialize();
     this.satelliteSystem.initialize();
     this.cameraController.initialize();
     this.lightingSystem.initialize();
@@ -151,6 +159,9 @@ export class SolarSimulator {
     // Load ephemeris data
     const ephemerisData = generateEphemerisData();
     this.planetSystem.setEphemerisData(ephemerisData);
+    
+    // Create moons for all planets
+    this.createMoons();
     
     // Set up getters for cross-system communication
     this.lightingSystem.setSunPositionGetter(() => {
@@ -245,6 +256,25 @@ export class SolarSimulator {
         loadingEl.style.display = 'none';
       }, 100);
     }
+  }
+  
+  /**
+   * Create moons for all planets
+   */
+  createMoons() {
+    console.log('Creating moons for planets...');
+    
+    // Planet IDs that have moons
+    const planetIds = [399, 499, 599, 699, 799, 899, 999]; // Earth, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto
+    
+    for (const planetId of planetIds) {
+      const planetNodes = this.planetSystem.getPlanetNodes(planetId);
+      if (planetNodes && planetNodes.bodyGroup) {
+        this.moonSystem.createMoonsForPlanet(planetId, planetNodes.bodyGroup);
+      }
+    }
+    
+    console.log('Moons created successfully');
   }
   
   /**
@@ -364,6 +394,14 @@ export class SolarSimulator {
         this.cameraController.focusOnObject(nodes.globe, bodyId, { distanceMultiplier: 3 });
       }
     });
+    
+    // Focus moon
+    this.uiController.on('focusMoon', ({ moonId, parentId }) => {
+      const moon = this.moonSystem.moons.get(moonId);
+      if (moon) {
+        this.cameraController.focusOnObject(moon.nodes.mesh, moonId, { distanceMultiplier: 5 });
+      }
+    });
   }
   
   /**
@@ -382,6 +420,9 @@ export class SolarSimulator {
     // Update planet positions and rotations
     this.planetSystem.updatePositions(jd);
     this.planetSystem.updateRotations(1/60, this.timeManager.timeWarp, date);
+    
+    // Update moon positions and rotations
+    this.moonSystem.update(1/60, jd);
     
     // Update satellite positions with smooth interpolation (pass current time)
     const currentTime = Date.now();

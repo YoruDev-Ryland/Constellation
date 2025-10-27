@@ -199,23 +199,40 @@
   accent-color: var(--accent-blue);
 }
 
-/* Planet buttons */
-#solarSimView .planet-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+/* Focus Tree View */
+#solarSimView .focus-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
+#solarSimView .tree-item {
+  display: flex;
+  flex-direction: column;
+}
+
+#solarSimView .tree-children {
+  display: flex;
+  padding-left: 20px;
+  margin-top: 2px;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 2px solid var(--border-color);
+  margin-left: 10px;
+}
+
+/* Planet buttons */
 #solarSimView .btn-planet {
   padding: 8px 12px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: 4px;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  text-align: left;
 }
 
 #solarSimView .btn-planet:hover {
@@ -227,6 +244,29 @@
 
 #solarSimView .btn-planet:active {
   transform: translateY(0);
+}
+
+/* Moon buttons */
+#solarSimView .btn-moon {
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+#solarSimView .btn-moon:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+}
+
+#solarSimView .btn-moon:active {
+  transform: scale(0.98);
 }
 
 /* Select input styling */
