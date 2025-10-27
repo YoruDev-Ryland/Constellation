@@ -13,6 +13,7 @@ import {
   OBLIQUITY_RAD
 } from '../core/constants.js';
 import { raDecToUnitVectorEQJ, equatorialToEcliptic } from '../core/coordinate-transforms.js';
+import { SunSystem } from './sun-system.js';
 
 /**
  * Planet System Class
@@ -28,6 +29,7 @@ export class PlanetSystem {
     this.ephemerisData = null;
     this.textureLoader = new THREE.TextureLoader();
     this.textures = new Map(); // Store loaded textures
+    this.sunSystem = new SunSystem(THREE, scene); // Realistic sun renderer
   }
   
   /**
@@ -216,29 +218,51 @@ export class PlanetSystem {
     
     // Create globe mesh
     const visualRadius = (radius / KM_PER_UNIT) * this.planetScaleMultiplier;
-    const geometry = new THREE.SphereGeometry(visualRadius, 64, 64);
     
     // Get texture data if available
     const textureData = this.textures.get(bodyId);
     
+    // Special handling for Sun - completely procedural, no textures or static geometry
+    if (bodyId === 10) {
+      // Sun - delegate to realistic sun system (no texture fallback)
+      const sunGroup = this.sunSystem.createSun(visualRadius, null);
+      sunGroup.name = `${name}_realisticSun`;
+      
+      // The sunGroup already contains photosphere, corona, and prominences
+      spin.add(sunGroup);
+      
+      // Store references (globe points to the sun group for consistency)
+      const nodes = {
+        bodyGroup,
+        orient,
+        spin,
+        globe: sunGroup, // Sun group acts as the "globe"
+        ring: null,
+        poleSpike: null,
+        clouds: null,
+        sunSystem: this.sunSystem // Store reference for updates
+      };
+      this.planetMeshes.set(bodyId, nodes);
+      
+      orient.add(spin);
+      bodyGroup.add(orient);
+      this.scene.add(bodyGroup);
+      
+      // Store visual radius for camera focusing
+      sunGroup.userData.bodyId = bodyId;
+      sunGroup.userData.bodyName = name;
+      sunGroup.userData.radius = visualRadius;
+      
+      // Early return - sun is fully handled, no static geometry created
+      return;
+    }
+    
+    // For all other planets, create standard sphere geometry
+    const geometry = new THREE.SphereGeometry(visualRadius, 64, 64);
+    
     // Material with texture support
     let material;
-    if (bodyId === 10) {
-      // Sun - emissive
-      if (textureData?.main) {
-        material = new THREE.MeshBasicMaterial({
-          map: textureData.main,
-          emissive: 0xffaa00,
-          emissiveIntensity: 0.5
-        });
-      } else {
-        material = new THREE.MeshBasicMaterial({
-          color: 0xffdd66,
-          emissive: 0xffaa00,
-          emissiveIntensity: 1.0
-        });
-      }
-    } else if (bodyId === 399) {
+    if (bodyId === 399) {
       // Earth - custom shader with day/night blending
       console.log('=== Earth Shader Debug ===');
       console.log('Day texture:', textureData?.main);
@@ -718,8 +742,17 @@ export class PlanetSystem {
    * For other planets, uses sidereal rotation periods
    */
   updateRotations(deltaSec, timeWarp, currentDate) {
+    // Update realistic sun animation
+    const sunNodes = this.planetMeshes.get(10);
+    if (sunNodes?.sunSystem) {
+      sunNodes.sunSystem.update(deltaSec * timeWarp);
+    }
+    
     for (const [bodyId, nodes] of this.planetMeshes) {
       if (!nodes.spin) continue;
+      
+      // Skip sun rotation (it's handled by sun system internally if needed)
+      if (bodyId === 10) continue;
       
       if (bodyId === 399 && currentDate) {
         // Earth: Use Greenwich Mean Sidereal Time for accurate rotation

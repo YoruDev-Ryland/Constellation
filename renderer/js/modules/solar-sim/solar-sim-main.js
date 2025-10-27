@@ -11,6 +11,7 @@ import { LightingSystem } from './systems/lighting-system.js';
 import { InteractionHandler } from './utils/interaction-handler.js';
 import { UIController } from './utils/ui-controller.js';
 import { generateEphemerisData } from './data/ephemeris-generator.js';
+import { SunDebugPanel } from './sun-debug-panel.js';
 
 /**
  * Solar System Simulator Main Class
@@ -35,6 +36,7 @@ export class SolarSimulator {
     this.lightingSystem = null;
     this.interactionHandler = null;
     this.uiController = null;
+    this.sunDebugPanel = null;
     
     // THREE.js reference (will be set when available)
     this.THREE = null;
@@ -138,6 +140,13 @@ export class SolarSimulator {
     this.lightingSystem.initialize();
     this.interactionHandler.initialize();
     this.uiController.initialize();
+    
+    // Initialize debug panel for sun tuning
+    const sunNodes = this.planetSystem.getPlanetNodes(10);
+    if (sunNodes?.sunSystem) {
+      this.sunDebugPanel = new SunDebugPanel(sunNodes.sunSystem);
+      this.sunDebugPanel.show(); // Show by default for tuning
+    }
     
     // Load ephemeris data
     const ephemerisData = generateEphemerisData();
@@ -427,6 +436,10 @@ export class SolarSimulator {
    */
   dispose() {
     this.stopAnimation();
+    
+    if (this.sunDebugPanel) {
+      this.sunDebugPanel.dispose();
+    }
     
     if (this.interactionHandler) {
       this.interactionHandler.dispose();
