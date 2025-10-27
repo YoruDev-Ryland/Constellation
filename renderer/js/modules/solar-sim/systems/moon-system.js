@@ -495,6 +495,7 @@ export class MoonSystem {
       // Determine direction (negative period = retrograde)
       const direction = moon.data.orbitPeriod < 0 ? -1 : 1;
       
+      // Advance orbital phase by deltaTime (seconds). deltaTime should already include timeWarp.
       moon.orbitPhase += angularVelocity * deltaTime * direction;
       
       // Calculate position in 3D space with inclination
@@ -508,14 +509,31 @@ export class MoonSystem {
       // Set moon position directly (relative to parent planet)
       moon.nodes.group.position.set(x, y, z);
 
-      // For tidally locked moons, calculate rotation to always face parent
-      // The moon needs to rotate to keep the same face pointing toward (0,0,0)
-      // Calculate the angle from moon to parent
+      // Handle moon rotation. If the moon is tidally locked (rotationHours roughly equals orbital period in hours)
+      // keep it facing the parent. Otherwise, rotate according to rotationHours.
+      const rotationHours = moon.data.rotationHours;
+      const orbitHours = moon.data.orbitPeriod * 24;
+
+      // Angle from moon to parent in orbital plane (approximation using x/z)
       const angleToParent = Math.atan2(z, x);
-      
-      // Rotate moon so it faces the parent
-      // Adding PI/2 because the "front" of the sphere is at +Z by default
-      moon.nodes.spin.rotation.y = -angleToParent + Math.PI / 2;
+
+      if (rotationHours != null && Math.abs(Math.abs(rotationHours) - Math.abs(orbitHours)) < 1e-3) {
+        // Tidally locked: face parent
+        // Adding PI/2 because the "front" of the sphere is at +Z by default
+        moon.nodes.spin.rotation.y = -angleToParent + Math.PI / 2;
+      } else if (rotationHours != null) {
+        // Independent rotation: advance the moon's self-rotation
+        // rotationHours may be negative for retrograde rotation
+        const rotationSeconds = Math.abs(rotationHours) * 3600;
+        if (rotationSeconds > 0) {
+          const rotDir = rotationHours < 0 ? -1 : 1;
+          const rotAngularVel = (2 * Math.PI) / rotationSeconds;
+          moon.nodes.spin.rotation.y += rotAngularVel * deltaTime * rotDir;
+        }
+      } else {
+        // Default fallback: keep facing parent
+        moon.nodes.spin.rotation.y = -angleToParent + Math.PI / 2;
+      }
     }
   }
 

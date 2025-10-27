@@ -487,16 +487,42 @@ export class PlanetSystem {
     
     const ringGeo = new THREE.RingGeometry(innerRad, outerRad, 128, 4);
     
+    // Saturn ring textures are typically stored as rectangular images where
+    // the horizontal axis represents the radial distance from inner to outer edge.
+    // We need to map the radial position to the horizontal (U) axis of the texture,
+    // and the vertical (V) axis can be constant since the rings are uniform around.
+    const pos = ringGeo.attributes.position;
+    const uvs = ringGeo.attributes.uv;
+    const center = new THREE.Vector3(0, 0, 0);
+    
+    for (let i = 0; i < pos.count; i++) {
+      const vertex = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+      
+      // Calculate radial distance from center (0 to 1, inner to outer)
+      const dist = vertex.distanceTo(center);
+      const radialPos = (dist - innerRad) / (outerRad - innerRad); // 0 at inner, 1 at outer
+      
+      // Map radial position to U (horizontal) coordinate of texture
+      // V stays constant since rings look the same all around
+      uvs.setXY(i, radialPos, 0.5);
+    }
+    uvs.needsUpdate = true;
+    
     // Get Saturn texture data for ring texture
     const saturnData = this.textures.get(699);
     
     let ringMat;
     if (saturnData?.ring) {
+      // Clamp wrapping to avoid repeating the texture
+      saturnData.ring.wrapS = THREE.ClampToEdgeWrapping;
+      saturnData.ring.wrapT = THREE.ClampToEdgeWrapping;
+      
       ringMat = new THREE.MeshBasicMaterial({
         map: saturnData.ring,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 1.0
+        opacity: 1.0,
+        alphaTest: 0.01 // Helps with transparency
       });
     } else {
       // Fallback to solid color

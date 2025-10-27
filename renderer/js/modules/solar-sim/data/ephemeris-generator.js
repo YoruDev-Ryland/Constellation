@@ -124,37 +124,37 @@ function generatePlanetEphemeris(bodyId, startJD, days, step) {
  * Generate ephemeris data for all planets
  */
 export function generateEphemerisData() {
-  // Use current date as center, generate data for ±2 years
+  // Use current date as reference point
   const now = new Date();
-  const startDate = new Date(now.getTime() - (730 * 24 * 60 * 60 * 1000)); // 2 years ago
-  const startJD = dateToJD(startDate);
-  const totalDays = 730 * 2; // 4 years total span
+  const startJD = dateToJD(now);
   
   const ephemerisData = {};
   
   for (const bodyId of PLANET_IDS) {
     if (bodyId === 10) {
-      // Sun at origin
-      const data = [];
-      for (let i = 0; i <= totalDays; i += 1) {
-        data.push([startJD + i, 0, 0, 0]);
-      }
+      // Sun at origin - only need current time since it doesn't move
+      const data = [[startJD, 0, 0, 0]];
       ephemerisData[bodyId] = data;
     } else {
       const elem = ORBITAL_ELEMENTS[bodyId];
       if (elem) {
-        // Sample with high enough resolution for smooth interpolation
-        // Use smaller step for inner planets, larger for outer
-        const period = elem.period;
-        const samplesPerOrbit = 200; // 200 points per orbit
-        const step = Math.max(1, period / samplesPerOrbit); // At least 1 day
+        // Generate data for ONE COMPLETE ORBITAL PERIOD
+        // This ensures we get a complete ellipse for orbit lines
+        const period = elem.period; // Full orbital period in days
         
-        ephemerisData[bodyId] = generatePlanetEphemeris(bodyId, startJD, totalDays, step);
+        // Use enough samples for a smooth orbit (minimum 360 points = 1 per degree)
+        const samplesPerOrbit = Math.max(360, Math.ceil(period / 10)); // At least 360, or 1 sample per 10 days
+        const step = period / samplesPerOrbit;
+        
+        // Generate from current time through one full orbit
+        ephemerisData[bodyId] = generatePlanetEphemeris(bodyId, startJD, period, step);
+        
+        console.log(`Generated ${ephemerisData[bodyId].length} points for ${bodyId} covering ${period.toFixed(1)} days (${(period/365.25).toFixed(1)} years)`);
       }
     }
   }
   
   console.log('Generated ephemeris data for', Object.keys(ephemerisData).length, 'bodies');
-  console.log(`Time span: ${startDate.toISOString()} to ${new Date(startDate.getTime() + totalDays * 24 * 60 * 60 * 1000).toISOString()}`);
+  console.log(`Reference time: ${now.toISOString()}`);
   return ephemerisData;
 }

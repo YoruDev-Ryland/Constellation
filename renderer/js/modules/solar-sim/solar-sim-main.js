@@ -426,8 +426,8 @@ export class SolarSimulator {
     this.planetSystem.updatePositions(jd);
     this.planetSystem.updateRotations(1/60, this.timeManager.timeWarp, date);
     
-    // Update moon positions and rotations
-    this.moonSystem.update(1/60, jd);
+  // Update moon positions and rotations (scale delta by timeWarp so moons speed with simulation)
+  this.moonSystem.update((1/60) * this.timeManager.timeWarp, jd);
     
     // Update satellite positions with smooth interpolation (pass current time)
     const currentTime = Date.now();
