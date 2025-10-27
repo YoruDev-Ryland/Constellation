@@ -65,8 +65,8 @@ export class PlanetSystem {
         fallback: '2k_earth_daymap.jpg',
         clouds: '8k_earth_clouds.jpg',
         night: '8k_earth_nightmap.jpg',
-        normal: '8k_earth_normal_map.tif',
-        specular: '8k_earth_specular_map.tif'
+        normal: '8k_earth_normal_map.jpg',
+        specular: '8k_earth_specular_map.jpg'
       },
       499: { main: '8k_mars.jpg', fallback: '2k_mars.jpg' },
       599: { main: '8k_jupiter.jpg', fallback: '2k_jupiter.jpg' },

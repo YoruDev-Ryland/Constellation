@@ -149,11 +149,20 @@ export class SolarSimulator {
     this.interactionHandler.initialize();
     this.uiController.initialize();
     
-    // Initialize debug panel for sun tuning
+    // Initialize debug panel for sun tuning (hidden by default)
     const sunNodes = this.planetSystem.getPlanetNodes(10);
     if (sunNodes?.sunSystem) {
       this.sunDebugPanel = new SunDebugPanel(sunNodes.sunSystem);
-      this.sunDebugPanel.show(); // Show by default for tuning
+      // Don't show by default - user can open via button
+      // Apply "Bright & Active" preset with corona alpha 0.0
+      this.sunDebugPanel.applyPreset({
+        granuleScale: 18, granuleSpeed: 0.15, granuleContrast: 1.2,
+        turbulenceScale: 12, turbulenceSpeed: 0.2, bumpStrength: 0.5,
+        emissionStrength: 1.2, limbDarkening: 0.6, activeRegions: 0.4,
+        coronaAlpha: 0.0, coronaDensityFalloff: 2.5,
+        emissionHue: 5, emissionSaturation: 1.2,
+        emissionColor: '#ffeb99', coronaColor: '#ffd699'
+      });
     }
     
     // Load ephemeris data
@@ -201,7 +210,9 @@ export class SolarSimulator {
     
     // Scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x000000);
+    // Set dark background color to prevent white flash during texture loading
+    this.scene.background = new THREE.Color(0x0a0a0a); // Very dark grey, nearly black
+    // No fog - we want to see stars at infinite distance
     
     // Camera - set up vector BEFORE anything else
     const aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
@@ -232,7 +243,7 @@ export class SolarSimulator {
       this.controls.dampingFactor = 0.05;
       this.controls.screenSpacePanning = false;
       this.controls.minDistance = 0.1;
-      this.controls.maxDistance = 1e7;
+      this.controls.maxDistance = 1e8; // 100 million units - can zoom out very far but not reach skybox at 5e8
       
       // Prevent gimbal lock by limiting polar angle slightly before vertical
       this.controls.minPolarAngle = 0.01; // Very close to top (almost 0°)
@@ -279,38 +290,68 @@ export class SolarSimulator {
   
   /**
    * Create background skybox
-   * TODO: Replace with Milky Way texture
+   * Uses 8k Milky Way texture, rotated to match galactic plane orientation
    */
   createBackground() {
     const THREE = this.THREE;
     const KM_PER_UNIT = 1e4;
     
-    // Create a large sphere for the skybox
-    const radius = (1e10 / KM_PER_UNIT); // 1 million units - very far away
+    // Create a very large sphere for the skybox
+    // Camera far plane is 1e9, so we'll place the skybox at about 50% of that
+    const radius = 5e8; // 500 million units - far enough that we can't reach it
     const geometry = new THREE.SphereGeometry(radius, 64, 64);
     
-    // Placeholder material until Milky Way texture is available
-    // When ready: place texture in renderer/assets/textures/milky_way.jpg
-    const material = new THREE.MeshBasicMaterial({
-      color: 0x000000, // Black for now
-      side: THREE.BackSide, // Render inside of sphere
-      depthWrite: false // Don't write to depth buffer
-    });
-    
-    /* 
-    // Uncomment this when you have the Milky Way texture:
+    // Load the Milky Way texture
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.load('./assets/textures/milky_way.jpg', (texture) => {
-      material.map = texture;
-      material.needsUpdate = true;
-      console.log('Milky Way texture loaded');
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x0a0a0a, // Dark grey to match scene background during loading
+      side: THREE.BackSide, // Render inside of sphere
+      depthWrite: false, // Don't write to depth buffer
+      depthTest: true, // Do depth test so it's always behind everything
+      fog: false, // Disable fog on skybox
+      toneMapped: false // Don't apply tone mapping to stars - they should be bright
     });
-    */
     
     const skybox = new THREE.Mesh(geometry, material);
     skybox.name = 'Skybox';
-    skybox.renderOrder = -1; // Render first
+    skybox.renderOrder = -1000; // Render first, well before everything else
+    skybox.frustumCulled = false; // Never cull the skybox
+    skybox.matrixAutoUpdate = false; // Skybox doesn't move
+    
+    // Rotate skybox to align galactic plane with ecliptic plane
+    // The galactic plane is tilted ~60.2 degrees relative to the ecliptic
+    // We need to rotate the texture to align the Milky Way disk with our solar system's orientation
+    // Galactic north pole: RA = 192.859°, Dec = 27.128° (J2000)
+    // This translates to roughly a 60° tilt from ecliptic north
+    skybox.rotation.x = (60.2 * Math.PI) / 180; // Rotate around X-axis to tilt galactic plane
+    skybox.rotation.z = (0 * Math.PI) / 180; // Additional rotation if needed for orientation
+    
+    skybox.updateMatrix(); // Update matrix after rotation
+    
+    // Load texture
+    textureLoader.load(
+      './assets/textures/planets/8k_stars_milky_way.jpg',
+      (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy(); // Best quality
+        material.map = texture;
+        material.color.setHex(0xffffff); // Change to white when texture loads to show full brightness
+        material.needsUpdate = true;
+        console.log('Milky Way texture loaded successfully');
+      },
+      undefined,
+      (error) => {
+        console.warn('Could not load Milky Way texture:', error);
+        // Keep dark background as fallback
+      }
+    );
+    
     this.scene.add(skybox);
+    
+    // Store reference for potential updates
+    this.skybox = skybox;
   }
   
   /**
@@ -367,6 +408,11 @@ export class SolarSimulator {
       this.planetSystem.setPlanetScale(scale);
     });
     
+    // Moon scale
+    this.uiController.on('moonScaleChange', (scale) => {
+      this.moonSystem.setMoonScale(scale);
+    });
+    
     // Sun scale
     this.uiController.on('sunScaleChange', (scale) => {
       this.planetSystem.setSunScale(scale);
@@ -405,6 +451,13 @@ export class SolarSimulator {
       const moon = this.moonSystem.moons.get(moonId);
       if (moon) {
         this.cameraController.focusOnObject(moon.nodes.mesh, moonId, { distanceMultiplier: 5 });
+      }
+    });
+    
+    // Open sun menu
+    this.uiController.on('openSunMenu', () => {
+      if (this.sunDebugPanel) {
+        this.sunDebugPanel.show();
       }
     });
   }

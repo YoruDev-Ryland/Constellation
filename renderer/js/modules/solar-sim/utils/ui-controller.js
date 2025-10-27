@@ -65,6 +65,10 @@ export class UIController {
             <input type="range" id="ss-planet-scale" min="1" max="500" value="1" step="1">
           </div>
           <div class="scale-control">
+            <label>Moons: <span id="ss-moon-scale-val">1×</span></label>
+            <input type="range" id="ss-moon-scale" min="1" max="100" value="1" step="1">
+          </div>
+          <div class="scale-control">
             <label>Satellites: <span id="ss-sat-scale-val">1×</span></label>
             <input type="range" id="ss-sat-scale" min="0.1" max="40" value="1" step="0.1">
           </div>
@@ -158,6 +162,11 @@ export class UIController {
             </div>
           </div>
         </div>
+        
+        <div class="control-panel">
+          <h3>Debug</h3>
+          <button id="ss-open-sun-menu" class="btn-secondary">☀️ Open Sun Menu</button>
+        </div>
     `;
     
     // Find the controls container and populate it
@@ -202,6 +211,12 @@ export class UIController {
       this.trigger('planetScaleChange', value);
     });
     
+    document.getElementById('ss-moon-scale')?.addEventListener('input', (e) => {
+      const value = parseFloat(e.target.value);
+      document.getElementById('ss-moon-scale-val').textContent = `${value}×`;
+      this.trigger('moonScaleChange', value);
+    });
+    
     document.getElementById('ss-sat-scale')?.addEventListener('input', (e) => {
       const value = parseFloat(e.target.value);
       document.getElementById('ss-sat-scale-val').textContent = `${value.toFixed(1)}×`;
@@ -223,6 +238,10 @@ export class UIController {
     
     document.getElementById('ss-sun-decay')?.addEventListener('change', (e) => 
       this.trigger('sunDecayChange', e.target.checked));
+    
+    // Sun menu button
+    document.getElementById('ss-open-sun-menu')?.addEventListener('click', () => 
+      this.trigger('openSunMenu'));
     
     // Planet focus buttons
     document.querySelectorAll('.btn-planet').forEach(btn => {

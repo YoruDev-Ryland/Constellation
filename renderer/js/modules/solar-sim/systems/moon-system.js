@@ -8,6 +8,8 @@ import { KM_PER_UNIT } from '../core/constants.js';
 /**
  * Moon data: radius (km), orbital radius (km), orbital period (days), color fallback
  * inclination: orbital inclination in degrees (relative to parent planet's equatorial plane)
+ * meanLongitudeJ2000: mean longitude at J2000.0 epoch (degrees) for accurate positioning
+ * textureRotationOffset: rotation offset in degrees for texture alignment (around Y-axis)
  */
 export const MOON_DATA = {
   // Earth's Moon
@@ -18,6 +20,8 @@ export const MOON_DATA = {
     orbitRadius: 384400,
     orbitPeriod: 27.322,
     inclination: 5.145, // Inclination to ecliptic (not equator)
+    meanLongitudeJ2000: 218.316, // Mean longitude at J2000.0 (simplified)
+    textureRotationOffset: 90, // Degrees to rotate texture for proper alignment
     color: 0x9a9a9a,
     texture: '8k_moon.jpg',
     rotationHours: 655.728 // Tidally locked (same as orbital period)
@@ -390,8 +394,9 @@ export class MoonSystem {
         mesh: moonMesh,
         orbitLine: orbitLine
       },
-      orbitPhase: Math.random() * Math.PI * 2, // Random starting phase
-      orbitRadius: orbitRadius // Store scaled orbit radius
+      orbitPhase: 0, // Will be initialized on first update with actual JD
+      orbitRadius: orbitRadius, // Store scaled orbit radius
+      initialized: false // Flag to track if phase has been set from simulation time
     };
 
     this.moons.set(moonId, moonObject);
@@ -409,8 +414,8 @@ export class MoonSystem {
    */
   createPoleSpike(height, color) {
     const points = [
-      new this.THREE.Vector3(0, 0, -height / 2),
-      new this.THREE.Vector3(0, 0, height / 2)
+      new this.THREE.Vector3(0, -height / 2, 0),
+      new this.THREE.Vector3(0, height / 2, 0)
     ];
     
     const geometry = new this.THREE.BufferGeometry().setFromPoints(points);
@@ -487,6 +492,38 @@ export class MoonSystem {
    */
   update(deltaTime, simulationTime) {
     for (const moon of this.moons.values()) {
+      // Initialize orbital phase from simulation time on first update
+      if (!moon.initialized && simulationTime) {
+        // Reference epoch: J2000.0 = JD 2451545.0
+        const J2000 = 2451545.0;
+        const daysSinceJ2000 = simulationTime - J2000;
+        
+        // Calculate mean motion (degrees per day)
+        const periodDays = Math.abs(moon.data.orbitPeriod);
+        const meanMotion = 360.0 / periodDays; // degrees per day
+        
+        // Calculate mean longitude at current time
+        let meanLongitude;
+        if (moon.data.meanLongitudeJ2000 !== undefined) {
+          // Use provided mean longitude at J2000 if available
+          meanLongitude = moon.data.meanLongitudeJ2000 + (meanMotion * daysSinceJ2000);
+        } else {
+          // Fall back to assuming the moon starts at 0° at J2000
+          meanLongitude = meanMotion * daysSinceJ2000;
+        }
+        
+        // Normalize to 0-360 range
+        meanLongitude = ((meanLongitude % 360) + 360) % 360;
+        
+        // Convert to radians for orbital phase
+        // For retrograde orbits, reverse the direction
+        const direction = moon.data.orbitPeriod < 0 ? -1 : 1;
+        moon.orbitPhase = (meanLongitude * Math.PI / 180) * direction;
+        
+        moon.initialized = true;
+        console.log(`Initialized ${moon.name} orbital phase: ${meanLongitude.toFixed(1)}° at JD ${simulationTime.toFixed(2)}`);
+      }
+      
       // Update orbital position
       const periodDays = Math.abs(moon.data.orbitPeriod);
       const periodSeconds = periodDays * 86400;
@@ -514,13 +551,24 @@ export class MoonSystem {
       const rotationHours = moon.data.rotationHours;
       const orbitHours = moon.data.orbitPeriod * 24;
 
-      // Angle from moon to parent in orbital plane (approximation using x/z)
-      const angleToParent = Math.atan2(z, x);
-
       if (rotationHours != null && Math.abs(Math.abs(rotationHours) - Math.abs(orbitHours)) < 1e-3) {
-        // Tidally locked: face parent
-        // Adding PI/2 because the "front" of the sphere is at +Z by default
-        moon.nodes.spin.rotation.y = -angleToParent + Math.PI / 2;
+        // Tidally locked: face parent planet (at origin 0,0,0)
+        // Calculate the direction vector from moon to parent
+        const dirToParent = new this.THREE.Vector3(-x, -y, -z).normalize();
+        
+        // We want the moon's "back" (local -Z axis) to point at the parent
+        // This means the front (+Z) faces away, which is correct for tidal locking
+        const defaultBack = new this.THREE.Vector3(0, 0, -1);
+        const quaternion = new this.THREE.Quaternion().setFromUnitVectors(defaultBack, dirToParent);
+        
+        // Apply the rotation to the spin node
+        moon.nodes.spin.setRotationFromQuaternion(quaternion);
+        
+        // Apply texture rotation offset if specified (for proper texture alignment)
+        if (moon.data.textureRotationOffset) {
+          const offsetRad = (moon.data.textureRotationOffset * Math.PI) / 180;
+          moon.nodes.spin.rotateY(offsetRad);
+        }
       } else if (rotationHours != null) {
         // Independent rotation: advance the moon's self-rotation
         // rotationHours may be negative for retrograde rotation
@@ -532,7 +580,16 @@ export class MoonSystem {
         }
       } else {
         // Default fallback: keep facing parent
-        moon.nodes.spin.rotation.y = -angleToParent + Math.PI / 2;
+        const dirToParent = new this.THREE.Vector3(-x, -y, -z).normalize();
+        const defaultBack = new this.THREE.Vector3(0, 0, -1);
+        const quaternion = new this.THREE.Quaternion().setFromUnitVectors(defaultBack, dirToParent);
+        moon.nodes.spin.setRotationFromQuaternion(quaternion);
+        
+        // Apply texture rotation offset if specified
+        if (moon.data.textureRotationOffset) {
+          const offsetRad = (moon.data.textureRotationOffset * Math.PI) / 180;
+          moon.nodes.spin.rotateY(offsetRad);
+        }
       }
     }
   }
@@ -558,6 +615,27 @@ export class MoonSystem {
    */
   setMoonScale(scale) {
     this.moonScaleMultiplier = scale;
+    
+    // Update all existing moon meshes
+    for (const moon of this.moons.values()) {
+      const visualRadius = (moon.data.radius / KM_PER_UNIT) * scale;
+      
+      // Update moon mesh geometry
+      if (moon.nodes.mesh && moon.nodes.mesh.geometry) {
+        moon.nodes.mesh.geometry.dispose();
+        moon.nodes.mesh.geometry = new this.THREE.SphereGeometry(visualRadius, 32, 32);
+      }
+      
+      // Update pole spike
+      const spikeHeight = visualRadius * 3;
+      const oldSpike = moon.nodes.spin.getObjectByName('poleSpike');
+      if (oldSpike) {
+        moon.nodes.spin.remove(oldSpike);
+        const newSpike = this.createPoleSpike(spikeHeight, moon.data.color);
+        moon.nodes.spin.add(newSpike);
+      }
+    }
+    
     console.log(`Moon scale set to ${scale}`);
   }
 
