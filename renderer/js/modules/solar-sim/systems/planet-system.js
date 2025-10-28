@@ -383,6 +383,12 @@ export class PlanetSystem {
     const globe = new THREE.Mesh(geometry, material);
     globe.name = `${name}_globe_mesh`;
     
+    // Enable shadows (except for Sun which is the light source)
+    if (bodyId !== 10) {
+      globe.castShadow = true;
+      globe.receiveShadow = true;
+    }
+    
     // Create a group to hold the globe (matches original pattern)
     const globeGroup = new THREE.Group();
     globeGroup.name = `${name}_globe`;
@@ -468,6 +474,8 @@ export class PlanetSystem {
 
       const cloudsMesh = new THREE.Mesh(cloudGeo, cloudMat);
       cloudsMesh.name = `${name}_clouds`;
+      cloudsMesh.castShadow = true;
+      cloudsMesh.receiveShadow = true;
       // Attach to the same spin node so clouds rotate with Earth (drift added in updateRotations)
       spin.add(cloudsMesh);
 

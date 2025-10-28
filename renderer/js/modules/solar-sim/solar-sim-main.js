@@ -232,6 +232,10 @@ export class SolarSimulator {
     this.renderer.toneMappingExposure = 0.5;
     this.renderer.sortObjects = true; // Enable object sorting to respect renderOrder
     
+    // Enable shadow mapping for realistic shadows
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadows
+    
     canvasContainer.appendChild(this.renderer.domElement);
     
     // Controls (OrbitControls from THREE.js examples)
@@ -450,7 +454,10 @@ export class SolarSimulator {
     this.uiController.on('focusMoon', ({ moonId, parentId }) => {
       const moon = this.moonSystem.moons.get(moonId);
       if (moon) {
-        this.cameraController.focusOnObject(moon.nodes.mesh, moonId, { distanceMultiplier: 5 });
+        this.cameraController.focusOnObject(moon.nodes.mesh, moonId, { 
+          distanceMultiplier: 5,
+          parentBodyId: parentId // Pass parent planet ID for shadow calculations
+        });
       }
     });
     
@@ -486,8 +493,25 @@ export class SolarSimulator {
     const currentTime = Date.now();
     this.satelliteSystem.updatePositions(jd, currentTime);
     
-    // Update lighting
-    this.lightingSystem.update();
+    // Update lighting (pass camera target for shadow focusing)
+    const focusPosition = this.controls.target || new this.THREE.Vector3(0, 0, 0);
+    const parentBodyId = this.cameraController.focusedParentBodyId || null;
+    
+    // Create planet position getter if we have a parent body ID
+    let planetPositionGetter = null;
+    if (parentBodyId && this.planetSystem) {
+      const planetSystem = this.planetSystem; // Capture reference
+      planetPositionGetter = (id) => {
+        if (!planetSystem || !planetSystem.planets) {
+          console.warn('PlanetSystem or planets map is undefined');
+          return null;
+        }
+        const planet = planetSystem.planets.get(id);
+        return planet ? planet.nodes.bodyGroup.position.clone() : null;
+      };
+    }
+    
+    this.lightingSystem.update(focusPosition, parentBodyId, planetPositionGetter);
     
     // Update camera
     this.cameraController.update();

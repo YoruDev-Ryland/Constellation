@@ -18,6 +18,7 @@ export class CameraController {
     this.followingObject = null;
     this.focusedObject = null;
     this.focusedBodyId = null;
+    this.focusedParentBodyId = null; // Track parent body for moon focusing (for shadows)
     this.cameraMode = 'ecliptic'; // or 'rotation-axis'
     this.animationFlagSetter = null; // Kept for compatibility
     this.followOffsetWorld = new THREE.Vector3(); // Camera offset from target in world space
@@ -122,6 +123,9 @@ export class CameraController {
    * Hard focus - animate to object and follow
    */
   focusOnObject(object, bodyId = null, options = {}) {
+    // Store parent body ID if provided (for moons)
+    this.focusedParentBodyId = options.parentBodyId || null;
+    
     // Check if GSAP is available
     if (typeof gsap === 'undefined') {
       console.warn('GSAP not loaded, using instant focus');

@@ -12,12 +12,16 @@ autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 log.info('Auto-updater initialized');
 
+// Increase max listeners to prevent warnings
+autoUpdater.setMaxListeners(20);
+
 // Configuration
 autoUpdater.autoDownload = false; // Don't auto-download, let user control
 autoUpdater.autoInstallOnAppQuit = true; // Install when app quits
 
 let updateDownloaded = false;
 let mainWindow = null;
+let listenersSetUp = false; // Flag to prevent duplicate listeners
 
 // Set up IPC handlers immediately when module loads
 setupIpcHandlers();
@@ -34,8 +38,11 @@ function initAutoUpdater(window) {
     checkForUpdates();
   }, 5000); // Wait 5 seconds after app start
 
-  // Set up event listeners
-  setupEventListeners();
+  // Set up event listeners only once
+  if (!listenersSetUp) {
+    setupEventListeners();
+    listenersSetUp = true;
+  }
 }
 
 /**
