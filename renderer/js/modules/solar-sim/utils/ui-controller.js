@@ -55,6 +55,35 @@ export class UIController {
         </div>
         
         <div class="control-panel">
+          <h3>Deep Space Probes</h3>
+          <select id="ss-probe-select" class="input">
+            <option value="">Select a probe...</option>
+            <option value="-31">Voyager 1</option>
+            <option value="-32">Voyager 2</option>
+            <option value="-98">New Horizons</option>
+            <option value="-82">Cassini</option>
+            <option value="-77">Galileo</option>
+            <option value="-61">Juno</option>
+            <option value="-96">Pioneer 10</option>
+            <option value="-23">Pioneer 11</option>
+            <option value="-163">STEREO-A</option>
+            <option value="-234">STEREO-B</option>
+            <option value="-41">Mars Express</option>
+            <option value="-74">Mars Odyssey</option>
+            <option value="-76">Mars Reconnaissance Orbiter</option>
+            <option value="-135">MAVEN</option>
+            <option value="-486">OSIRIS-REx</option>
+            <option value="-203">DAWN</option>
+            <option value="-140">BepiColombo</option>
+            <option value="-226">Rosetta</option>
+          </select>
+          <button id="ss-probe-focus" class="btn-secondary" disabled>Focus Probe</button>
+          <div class="probe-info">
+            <span id="ss-probe-status">No probe loaded</span>
+          </div>
+        </div>
+        
+        <div class="control-panel">
           <h3>Scale</h3>
           <div class="scale-control">
             <label>Sun: <span id="ss-sun-scale-val">1×</span></label>
@@ -198,6 +227,24 @@ export class UIController {
     document.getElementById('ss-satellite-group')?.addEventListener('change', (e) => 
       this.trigger('satelliteGroupChange', e.target.value));
     
+    // Probe controls
+    const probeSelect = document.getElementById('ss-probe-select');
+    const probeFocusBtn = document.getElementById('ss-probe-focus');
+    
+    probeSelect?.addEventListener('change', (e) => {
+      const probeId = e.target.value;
+      if (probeFocusBtn) {
+        probeFocusBtn.disabled = !probeId;
+      }
+    });
+    
+    probeFocusBtn?.addEventListener('click', () => {
+      const probeId = probeSelect?.value;
+      if (probeId) {
+        this.trigger('focusProbe', probeId);
+      }
+    });
+    
     // Scale controls
     document.getElementById('ss-sun-scale')?.addEventListener('input', (e) => {
       const value = parseFloat(e.target.value);
@@ -294,6 +341,16 @@ export class UIController {
     const elem = document.getElementById('ss-satellite-count');
     if (elem) {
       elem.textContent = `${count} satellites`;
+    }
+  }
+  
+  /**
+   * Update probe status display
+   */
+  updateProbeStatus(status) {
+    const elem = document.getElementById('ss-probe-status');
+    if (elem) {
+      elem.textContent = status;
     }
   }
 }

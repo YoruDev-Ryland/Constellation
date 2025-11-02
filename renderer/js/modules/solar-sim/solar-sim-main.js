@@ -7,6 +7,7 @@ import { TimeManager } from './core/time-system.js';
 import { PlanetSystem } from './systems/planet-system.js';
 import { MoonSystem } from './systems/moon-system.js';
 import { SatelliteSystem } from './systems/satellite-system.js';
+import { ProbeSystem } from './systems/probe-system.js';
 import { CameraController } from './systems/camera-controller.js';
 import { LightingSystem } from './systems/lighting-system.js';
 import { InteractionHandler } from './utils/interaction-handler.js';
@@ -34,6 +35,7 @@ export class SolarSimulator {
     this.planetSystem = null;
     this.moonSystem = null;
     this.satelliteSystem = null;
+    this.probeSystem = null;
     this.cameraController = null;
     this.lightingSystem = null;
     this.interactionHandler = null;
@@ -130,6 +132,7 @@ export class SolarSimulator {
     this.moonSystem = new MoonSystem(THREE, this.scene, textureLoader);
     
     this.satelliteSystem = new SatelliteSystem(this.scene, THREE);
+    this.probeSystem = new ProbeSystem(this.scene, THREE);
     this.cameraController = new CameraController(this.camera, this.controls, THREE);
     this.lightingSystem = new LightingSystem(this.scene, this.renderer, THREE);
     this.interactionHandler = new InteractionHandler(this.camera, this.renderer, THREE);
@@ -144,6 +147,7 @@ export class SolarSimulator {
     await this.planetSystem.initialize();
     await this.moonSystem.initialize();
     this.satelliteSystem.initialize();
+    this.probeSystem.initialize();
     this.cameraController.initialize();
     this.lightingSystem.initialize();
     this.interactionHandler.initialize();
@@ -362,9 +366,8 @@ export class SolarSimulator {
    * Set up interaction callbacks
    */
   setupInteractions() {
-    // Get pickable objects
-    const pickables = this.planetSystem.getPickableObjects();
-    this.interactionHandler.setPickables(pickables);
+    // Initial pickable objects (planets and moons)
+    this.updatePickableObjects();
     
     // Single click - soft orient
     this.interactionHandler.setOnClick((object) => {
@@ -379,8 +382,20 @@ export class SolarSimulator {
       const bodyId = object.userData.bodyId;
       const bodyName = object.userData.bodyName;
       console.log(`Focusing on: ${bodyName}`);
-      this.cameraController.focusOnObject(object, bodyId, { distanceMultiplier: 3 });
+      const distMult = object.userData.isProbe ? 10 : 3;
+      this.cameraController.focusOnObject(object, bodyId, { distanceMultiplier: distMult });
     });
+  }
+  
+  /**
+   * Update pickable objects (call when probes are loaded/unloaded)
+   */
+  updatePickableObjects() {
+    const pickables = [
+      ...this.planetSystem.getPickableObjects(),
+      ...this.probeSystem.getProbeMeshes()
+    ];
+    this.interactionHandler.setPickables(pickables);
   }
   
   /**
@@ -461,6 +476,34 @@ export class SolarSimulator {
       }
     });
     
+    // Focus probe
+    this.uiController.on('focusProbe', async (probeId) => {
+      this.uiController.updateProbeStatus('Loading probe...');
+      
+      // Load probe if not already loaded
+      let probe = this.probeSystem.getProbe(probeId);
+      if (!probe) {
+        probe = await this.probeSystem.loadProbe(probeId);
+        // Update pickable objects after loading new probe
+        this.updatePickableObjects();
+      }
+      
+      if (probe) {
+        // Update position first
+        const jd = this.timeManager.getJD();
+        await this.probeSystem.updatePositions(jd);
+        
+        // Focus camera on probe
+        this.cameraController.focusOnObject(probe.mesh, parseInt(probeId), { 
+          distanceMultiplier: 10 // Probes are small, zoom in close
+        });
+        
+        this.uiController.updateProbeStatus(`Focused: ${probe.name}`);
+      } else {
+        this.uiController.updateProbeStatus('Failed to load probe');
+      }
+    });
+    
     // Open sun menu
     this.uiController.on('openSunMenu', () => {
       if (this.sunDebugPanel) {
@@ -492,6 +535,11 @@ export class SolarSimulator {
     // Update satellite positions with smooth interpolation (pass current time)
     const currentTime = Date.now();
     this.satelliteSystem.updatePositions(jd, currentTime);
+    
+    // Update probe positions (async but won't block rendering)
+    if (this.probeSystem.getLoadedProbes().length > 0) {
+      this.probeSystem.updatePositions(jd);
+    }
     
     // Update lighting (pass camera target for shadow focusing)
     const focusPosition = this.controls.target || new this.THREE.Vector3(0, 0, 0);
@@ -566,6 +614,10 @@ export class SolarSimulator {
     
     if (this.moonSystem) {
       this.moonSystem.dispose();
+    }
+    
+    if (this.probeSystem) {
+      this.probeSystem.dispose();
     }
     
     if (this.sunDebugPanel) {

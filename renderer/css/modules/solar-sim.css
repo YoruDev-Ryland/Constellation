@@ -114,6 +114,46 @@
   text-align: center;
 }
 
+/* Probe controls */
+#solarSimView .probe-info {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 6px 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+#solarSimView #ss-probe-focus {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  transition: all 0.2s;
+}
+
+#solarSimView #ss-probe-focus:hover:not(:disabled) {
+  background: var(--accent-purple);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+#solarSimView #ss-probe-focus:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+#solarSimView #ss-probe-focus:disabled {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* Scale controls */
 #solarSimView .scale-control {
   margin-bottom: 12px;

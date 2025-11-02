@@ -85,3 +85,32 @@ export const PLANET_NAMES = {
 
 // Planet Bodies (NAIF IDs)
 export const PLANET_IDS = [10, 199, 299, 399, 499, 599, 699, 799, 899, 999];
+
+// Deep Space Probes (NAIF IDs from JPL Horizons)
+export const DEEP_SPACE_PROBES = {
+  '-31': 'Voyager 1',
+  '-32': 'Voyager 2',
+  '-77': 'Galileo',
+  '-82': 'Cassini',
+  '-98': 'New Horizons',
+  '-163': 'STEREO-A',
+  '-234': 'STEREO-B',
+  '-28': 'VEGA 1',
+  '-29': 'VEGA 2',
+  '-96': 'Pioneer 10',
+  '-23': 'Pioneer 11',
+  '-61': 'Juno',
+  '-41': 'Mars Express',
+  '-74': 'Mars Odyssey',
+  '-76': 'Mars Reconnaissance Orbiter',
+  '-135': 'MAVEN',
+  '-486': 'OSIRIS-REx',
+  '-203': 'DAWN',
+  '-140': 'BepiColombo',
+  '-226': 'Rosetta',
+  '-164': 'LCROSS',
+  '-85': 'Chang\'e 2'
+};
+
+// Probe size for rendering (km)
+export const PROBE_SIZE_KM = 50;
