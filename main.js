@@ -235,6 +235,137 @@ ipcMain.handle('rename-folder', async (event, oldPath, newName) => {
   }
 });
 
+ipcMain.handle('check-path-exists', async (event, filePath) => {
+  try {
+    await fs.access(filePath);
+    return { exists: true };
+  } catch (error) {
+    return { exists: false };
+  }
+});
+
+// Helper function to count files recursively
+async function countFiles(dir) {
+  let count = 0;
+  const stats = await fs.stat(dir);
+  
+  if (stats.isDirectory()) {
+    const items = await fs.readdir(dir);
+    for (const item of items) {
+      count += await countFiles(path.join(dir, item));
+    }
+  } else {
+    count = 1;
+  }
+  
+  return count;
+}
+
+// Helper function for recursive copy with progress (needed for network drives)
+async function copyRecursiveWithProgress(src, dest, event, progressData) {
+  const stats = await fs.stat(src);
+  
+  if (stats.isDirectory()) {
+    // Create destination directory
+    await fs.mkdir(dest, { recursive: true });
+    
+    // Get all items in source directory
+    const items = await fs.readdir(src);
+    
+    // Copy each item
+    for (const item of items) {
+      const srcPath = path.join(src, item);
+      const destPath = path.join(dest, item);
+      await copyRecursiveWithProgress(srcPath, destPath, event, progressData);
+    }
+  } else {
+    // Copy file using streams (works better with network drives)
+    const fileName = path.basename(src);
+    
+    await new Promise((resolve, reject) => {
+      const readStream = require('fs').createReadStream(src);
+      const writeStream = require('fs').createWriteStream(dest);
+      
+      readStream.on('error', reject);
+      writeStream.on('error', reject);
+      writeStream.on('finish', () => {
+        progressData.completed++;
+        const progress = (progressData.completed / progressData.total) * 100;
+        event.sender.send('move-progress', {
+          fileName,
+          completed: progressData.completed,
+          total: progressData.total,
+          progress: Math.round(progress)
+        });
+        resolve();
+      });
+      
+      readStream.pipe(writeStream);
+    });
+  }
+}
+
+ipcMain.handle('move-folder', async (event, sourcePath, destinationPath) => {
+  try {
+    // Check if source exists
+    await fs.access(sourcePath);
+    
+    // Ensure destination parent directory exists
+    const destDir = path.dirname(destinationPath);
+    await fs.mkdir(destDir, { recursive: true });
+    
+    // Check if destination already exists
+    try {
+      await fs.access(destinationPath);
+      return { success: false, error: 'Destination already exists' };
+    } catch {
+      // Destination doesn't exist, which is what we want
+    }
+    
+    // Try to move the folder with rename first (fast for same device)
+    try {
+      await fs.rename(sourcePath, destinationPath);
+      return { success: true, newPath: destinationPath };
+    } catch (renameError) {
+      // If rename fails (cross-device or network), use manual copy with progress
+      console.log('Rename failed, using manual copy method:', renameError.code);
+      
+      // Count total files for progress tracking
+      const totalFiles = await countFiles(sourcePath);
+      const progressData = { completed: 0, total: totalFiles };
+      
+      // Send initial progress
+      event.sender.send('move-progress', {
+        fileName: 'Preparing...',
+        completed: 0,
+        total: totalFiles,
+        progress: 0
+      });
+      
+      // Copy the entire directory recursively with progress
+      await copyRecursiveWithProgress(sourcePath, destinationPath, event, progressData);
+      
+      // Verify the copy was successful by checking if destination exists
+      await fs.access(destinationPath);
+      
+      // Delete the source directory
+      event.sender.send('move-progress', {
+        fileName: 'Cleaning up source files...',
+        completed: totalFiles,
+        total: totalFiles,
+        progress: 100
+      });
+      
+      await fs.rm(sourcePath, { recursive: true, force: true });
+      
+      return { success: true, newPath: destinationPath };
+    }
+  } catch (error) {
+    console.error('Move folder error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('delete-folder', async (event, folderPath) => {
   try {
     await fs.rm(folderPath, { recursive: true, force: true });
@@ -338,6 +469,43 @@ ipcMain.handle('save-library-database', async (event, data) => {
     await fs.writeFile(dbPath, JSON.stringify(dbData, null, 2), 'utf8');
     return { success: true };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Archive database operations
+ipcMain.handle('load-archive-library-database', async (event, archivePath) => {
+  try {
+    if (!archivePath) return null;
+    
+    const dbPath = path.join(archivePath, '.constellation');
+    const data = await fs.readFile(dbPath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.log('No archive database found at:', archivePath);
+    return null;
+  }
+});
+
+ipcMain.handle('save-archive-library-database', async (event, archivePath, data) => {
+  try {
+    if (!archivePath) return { success: false, error: 'No archive path set' };
+    
+    // Ensure archive directory exists
+    await fs.mkdir(archivePath, { recursive: true });
+    
+    const dbPath = path.join(archivePath, '.constellation');
+    const dbData = {
+      version: '1.0',
+      lastScan: new Date().toISOString(),
+      isArchive: true,
+      ...data
+    };
+    
+    await fs.writeFile(dbPath, JSON.stringify(dbData, null, 2), 'utf8');
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving archive library database:', error);
     return { success: false, error: error.message };
   }
 });
@@ -582,6 +750,9 @@ ipcMain.handle('get-calendar-images', async (event, storagePath, forceRefresh = 
     if (forceRefresh || cacheAge > 6 || !lastScanTime) {
       const dateToImage = {}; // { 'YYYY-MM-DD': { path, mtime } }
 
+      // Support multiple image formats
+      const imageExtensions = /\.(jpe?g|png|tiff?|bmp|webp)$/i;
+
       async function walk(dir, depth = 0) {
         if (depth > 4) return; // avoid deep recursion
         let entries;
@@ -591,7 +762,7 @@ ipcMain.handle('get-calendar-images', async (event, storagePath, forceRefresh = 
           if (entry.isDirectory()) {
             if (entry.name.startsWith('.')) continue;
             await walk(fullPath, depth + 1);
-          } else if (entry.isFile() && /\.(jpe?g)$/i.test(entry.name)) {
+          } else if (entry.isFile() && imageExtensions.test(entry.name)) {
             try {
               const stats = await fs.stat(fullPath);
               const dateKey = stats.mtime.toISOString().split('T')[0];
@@ -604,7 +775,18 @@ ipcMain.handle('get-calendar-images', async (event, storagePath, forceRefresh = 
         }
       }
 
+      // Scan main storage path
       await walk(storagePath);
+      
+      // Scan finals folder if configured
+      if (settings.finalsPath && settings.finalsPath.trim() !== '') {
+        console.log('Scanning finals folder for calendar images:', settings.finalsPath);
+        try {
+          await walk(settings.finalsPath);
+        } catch (finalsErr) {
+          console.warn('Failed to scan finals folder:', finalsErr);
+        }
+      }
       
       // Update database with new cache
       dbData.calendarImages = {

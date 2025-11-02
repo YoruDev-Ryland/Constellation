@@ -7,7 +7,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scanDirectory: (dirPath) => ipcRenderer.invoke('scan-directory', dirPath),
   readFitsHeader: (filePath) => ipcRenderer.invoke('read-fits-header', filePath),
   renameFolder: (oldPath, newName) => ipcRenderer.invoke('rename-folder', oldPath, newName),
+  moveFolder: (sourcePath, destinationPath) => ipcRenderer.invoke('move-folder', sourcePath, destinationPath),
   deleteFolder: (folderPath) => ipcRenderer.invoke('delete-folder', folderPath),
+  checkPathExists: (filePath) => ipcRenderer.invoke('check-path-exists', filePath),
   getProjects: () => ipcRenderer.invoke('get-projects'),
   saveProjects: (projects) => ipcRenderer.invoke('save-projects', projects),
   completeSetup: () => ipcRenderer.invoke('complete-setup'),
@@ -15,6 +17,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   windowControl: (action) => ipcRenderer.invoke('window-control', action),
   loadLibraryDatabase: () => ipcRenderer.invoke('load-library-database'),
   saveLibraryDatabase: (data) => ipcRenderer.invoke('save-library-database', data),
+  loadArchiveLibraryDatabase: (archivePath) => ipcRenderer.invoke('load-archive-library-database', archivePath),
+  saveArchiveLibraryDatabase: (archivePath, data) => ipcRenderer.invoke('save-archive-library-database', archivePath, data),
   findProjectThumbnail: (projectName, storagePath) => ipcRenderer.invoke('find-project-thumbnail', projectName, storagePath),
   fetchProjectThumbnail: (projectName, storagePath) => ipcRenderer.invoke('fetch-project-thumbnail', projectName, storagePath),
   selectCustomThumbnail: () => ipcRenderer.invoke('select-custom-thumbnail'),
@@ -29,6 +33,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Listen for settings modal events
   onShowSettings: (callback) => ipcRenderer.on('show-settings-modal', callback),
+  onMoveProgress: (callback) => ipcRenderer.on('move-progress', (event, data) => callback(data)),
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
   // List JPG/JPEG images within a project folder (recursively)
   listProjectImages: (projectPath) => ipcRenderer.invoke('list-project-images', projectPath),

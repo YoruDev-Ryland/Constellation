@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: file: blob:; connect-src 'self' https:;">
   <title>Constellation - Setup</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/modules/modal-manager.css">
@@ -45,6 +46,46 @@
               Browse
             </button>
           </div>
+        </div>
+      </div>
+
+      <div class="setup-step" id="step1b">
+        <h2>Finals Folder</h2>
+        <p>Location where your final processed images are stored (JPG, PNG, TIFF, etc.)</p>
+        
+        <div class="form-group">
+          <label for="finalsPath">Finals Path</label>
+          <div class="input-group">
+            <input type="text" id="finalsPath" placeholder="Optional - Leave empty to search within Library Path" readonly>
+            <button class="btn btn-secondary" id="selectFinalsBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
+              </svg>
+              Browse
+            </button>
+            <button class="btn btn-secondary" id="clearFinalsBtn">Clear</button>
+          </div>
+          <p class="hint">This folder will be scanned recursively for final images in nested folders</p>
+        </div>
+      </div>
+
+      <div class="setup-step" id="step1c">
+        <h2>Archive/Completed Folder</h2>
+        <p>Location to move completed projects for archival storage (e.g., NAS, external drive)</p>
+        
+        <div class="form-group">
+          <label for="archivePath">Archive Path</label>
+          <div class="input-group">
+            <input type="text" id="archivePath" placeholder="Optional - Projects won't be moved when completed" readonly>
+            <button class="btn btn-secondary" id="selectArchiveBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
+              </svg>
+              Browse
+            </button>
+            <button class="btn btn-secondary" id="clearArchiveBtn">Clear</button>
+          </div>
+          <p class="hint">When marking a project complete, you'll be asked if you want to move it here</p>
         </div>
       </div>
 

@@ -4,6 +4,8 @@ if (typeof window.setupModuleLoaded === 'undefined') {
 
 // Setup Page Variables
 let storagePath = '';
+let finalsPath = '';
+let archivePath = '';
 let cleanupFolders = [];
 let ignoreFolders = [];
 let enableBackgroundScan = true;
@@ -20,7 +22,9 @@ let thirdPartyPrograms = {
 };
 
 // DOM elements - will be initialized when setupModalInit is called
-let storageInput, selectStorageBtn, cleanupInput, addCleanupBtn, cleanupTagsContainer;
+let storageInput, selectStorageBtn, finalsInput, selectFinalsBtn, clearFinalsBtn;
+let archiveInput, selectArchiveBtn, clearArchiveBtn;
+let cleanupInput, addCleanupBtn, cleanupTagsContainer;
 let ignoreInput, addIgnoreBtn, ignoreTagsContainer, licenseKeyInput, activateLicenseBtn;
 let deactivateLicenseBtn, licenseStatus, licenseActions, enableBackgroundScanCheckbox;
 let backgroundScanHoursSelect, backgroundFrequencyGroup, completeSetupBtn;
@@ -32,6 +36,12 @@ window.setupModalInit = function setupModalInit() {
   // Get DOM elements
   storageInput = document.getElementById('storagePath');
   selectStorageBtn = document.getElementById('selectStorageBtn');
+  finalsInput = document.getElementById('finalsPath');
+  selectFinalsBtn = document.getElementById('selectFinalsBtn');
+  clearFinalsBtn = document.getElementById('clearFinalsBtn');
+  archiveInput = document.getElementById('archivePath');
+  selectArchiveBtn = document.getElementById('selectArchiveBtn');
+  clearArchiveBtn = document.getElementById('clearArchiveBtn');
   cleanupInput = document.getElementById('cleanupInput');
   addCleanupBtn = document.getElementById('addCleanupBtn');
   cleanupTagsContainer = document.getElementById('cleanupTags');
@@ -64,6 +74,40 @@ window.setupModalInit = function setupModalInit() {
         storageInput.value = path;
         validateSetup();
       }
+    });
+  }
+
+  if (selectFinalsBtn) {
+    selectFinalsBtn.addEventListener('click', async () => {
+      const path = await window.electronAPI.selectDirectory();
+      if (path) {
+        finalsPath = path;
+        finalsInput.value = path;
+      }
+    });
+  }
+
+  if (clearFinalsBtn) {
+    clearFinalsBtn.addEventListener('click', () => {
+      finalsPath = '';
+      finalsInput.value = '';
+    });
+  }
+
+  if (selectArchiveBtn) {
+    selectArchiveBtn.addEventListener('click', async () => {
+      const path = await window.electronAPI.selectDirectory();
+      if (path) {
+        archivePath = path;
+        archiveInput.value = path;
+      }
+    });
+  }
+
+  if (clearArchiveBtn) {
+    clearArchiveBtn.addEventListener('click', () => {
+      archivePath = '';
+      archiveInput.value = '';
     });
   }
 
@@ -200,7 +244,7 @@ function onLicenseKeyInput(e) {
 }
 
 function formatLicenseKeyString(value) {
-  // Format as XXXX-XXXX-XXXX-XXXX
+  // Format as XXXXX-XXXXX-XXXXX-XXXXX-XXXXX
   return value.replace(/(.{4})/g, '$1-').slice(0, 19);
 }
 
@@ -218,9 +262,9 @@ function applyObservatoryPreset(preset) {
   const presets = {
     sfro: {
       name: 'Starfront Remote Observatory',
-      latitude: 30.6719,
-      longitude: -104.0147,
-      elevation: 1220
+      latitude: 31.547222,
+      longitude: -99.381667,
+      elevation: 472
     },
     udro: {
       name: 'Utah Desert Remote Observatory',
@@ -433,6 +477,14 @@ async function loadExistingSettings() {
       storagePath = settings.storagePath;
       storageInput.value = storagePath;
     }
+    if (settings.finalsPath) {
+      finalsPath = settings.finalsPath;
+      if (finalsInput) finalsInput.value = finalsPath;
+    }
+    if (settings.archivePath) {
+      archivePath = settings.archivePath;
+      if (archiveInput) archiveInput.value = archivePath;
+    }
     if (settings.cleanupFolders) {
       cleanupFolders = settings.cleanupFolders;
     }
@@ -486,6 +538,8 @@ async function completeSetup() {
     const settings = {
       ...currentSettings, // Preserve existing settings including license data
       storagePath,
+      finalsPath,
+      archivePath,
       cleanupFolders,
       ignoreFolders,
       enableBackgroundScan,

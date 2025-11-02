@@ -189,6 +189,25 @@ async function persistLibrary() {
   }
 }
 
+async function persistArchiveLibrary() {
+  try {
+    if (!settings.archivePath || settings.archivePath.trim() === '') return;
+    
+    const mgr = ensureLogManager();
+    const archivePath = settings.archivePath;
+    const archivedProjects = (projects || []).filter(p => p.libraryPath === archivePath);
+    const databaseData = { 
+      targets: [], // Archives don't need targets, they're completed projects
+      projects: archivedProjects, 
+      scanLog: mgr.getEntries().slice(-100) 
+    };
+    const result = await window.electronAPI.saveArchiveLibraryDatabase(archivePath, databaseData);
+    if (!result.success) console.error('Failed to save archive library database:', result.error);
+  } catch (e) {
+    console.error('Error saving archive library database:', e);
+  }
+}
+
 async function scanLibrary() {
   const scanner = ensureFileScanner();
   const scanBtn = document.getElementById('scanBtn');
@@ -197,13 +216,78 @@ async function scanLibrary() {
     scanBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Scanning...';
   }
   try {
+    // Scan main library
     targets = await scanner.scan(settings.storagePath);
     await synchronizeProjectsFromTargets();
+    
+    // Scan archive folder for completed projects (if configured)
+    if (settings.archivePath && settings.archivePath.trim() !== '') {
+      try {
+        console.log('Scanning archive folder for completed projects...');
+        const archiveTargets = await scanner.scan(settings.archivePath);
+        
+        // Add archived targets as completed projects
+        const pm = ensureProjectManager();
+        for (const target of archiveTargets) {
+          // Check if project already exists
+          let existingProject = projects.find(p => p.name === target.name);
+          
+          if (!existingProject) {
+            // Create new completed project
+            const archivedProject = {
+              id: Date.now() + Math.random(),
+              name: target.name,
+              status: 'completed',
+              totalTime: target.totalTime,
+              imageCount: target.imageCount,
+              filters: target.filters,
+              createdAt: new Date().toISOString(),
+              completedAt: new Date().toISOString(),
+              thumbnailPath: null,
+              integrationTargetHours: null,
+              libraryPath: settings.archivePath,
+              path: `${settings.archivePath}/${target.name}`
+            };
+            projects.push(archivedProject);
+            console.log(`Added archived project: ${target.name}`);
+          } else if (existingProject.status !== 'completed') {
+            // Update existing project to mark as completed
+            existingProject.status = 'completed';
+            existingProject.completedAt = existingProject.completedAt || new Date().toISOString();
+            existingProject.libraryPath = settings.archivePath;
+            existingProject.path = `${settings.archivePath}/${target.name}`;
+            console.log(`Updated project to completed: ${target.name}`);
+          }
+        }
+        pm.setProjects(projects);
+        await pm.save();
+      } catch (archiveErr) {
+        console.warn('Archive folder scan failed:', archiveErr);
+      }
+    }
+    
+    // Clean up orphaned projects during scan (projects that have been moved/deleted)
+    try {
+      const cleanupResult = await ensureProjectManager().cleanupOrphanedProjects(settings.storagePath);
+      if (cleanupResult.removed.length > 0) {
+        console.log(`Removed ${cleanupResult.removed.length} orphaned project(s) that no longer exist on disk`);
+        projects = ensureProjectManager().getProjects();
+      }
+    } catch (cleanupErr) { 
+      console.warn('Orphaned project cleanup during scan failed:', cleanupErr); 
+    }
+    
     // Auto-detect thumbnails for any new / missing ones immediately after sync
     try {
       const pm = ensureProjectManager();
       const before = (pm.getProjects() || []).filter(p => p.thumbnailPath).length;
       await pm.autoDetectMissingThumbnails(settings.storagePath);
+      
+      // Also detect thumbnails in archive folder
+      if (settings.archivePath && settings.archivePath.trim() !== '') {
+        await pm.autoDetectMissingThumbnails(settings.archivePath);
+      }
+      
       const after = (pm.getProjects() || []).filter(p => p.thumbnailPath).length;
       const detected = after - before;
       if (detected > 0) {
@@ -213,7 +297,14 @@ async function scanLibrary() {
         projects = pm.getProjects();
       }
     } catch (thumbErr) { console.warn('Thumbnail auto-detect during scan failed:', thumbErr); }
+    
     await persistLibrary();
+    
+    // Also persist archive library if we scanned it
+    if (settings.archivePath && settings.archivePath.trim() !== '') {
+      await persistArchiveLibrary();
+    }
+    
     renderDashboard();
     renderProjects();
     renderCleanup();
@@ -259,7 +350,7 @@ async function init() {
   }
   
   try {
-    const db = await window.electronAPI.getLibraryDatabase?.();
+    const db = await window.electronAPI.loadLibraryDatabase?.();
     console.log('Loaded database:', db ? 'found' : 'not found', db?.targets?.length || 0, 'targets');
     if (db && db.targets) {
       targets = db.targets || [];
@@ -274,24 +365,43 @@ async function init() {
         await window.electronAPI.saveProjects(projects);
         await persistLibrary();
       }
-      // If any projects lack thumbnails, attempt a background auto-detect now
-      try {
-        if (projects.some(p => !p.thumbnailPath)) {
-          await ensureProjectManager().autoDetectMissingThumbnails(settings.storagePath);
-          projects = ensureProjectManager().getProjects();
-        }
-      } catch (e) { console.warn('Startup thumbnail auto-detect (DB path) failed:', e); }
+      
+      // Note: Orphaned project cleanup and thumbnail detection are now handled by
+      // the background scanner to avoid slow startup times with large libraries (e.g., NAS)
+      console.log('Loaded library from cache - use Scan Library to refresh or validate projects');
     } else {
       console.log('No database found, loading from fallback methods');
       projects = await window.electronAPI.getProjects();
       ensureProjectManager().setProjects(projects);
-      await ensureProjectManager().autoDetectMissingThumbnails(settings.storagePath);
+    }
+    
+    // Load archived projects from archive .constellation file
+    if (settings.archivePath && settings.archivePath.trim() !== '') {
+      try {
+        const archiveDb = await window.electronAPI.loadArchiveLibraryDatabase?.(settings.archivePath);
+        if (archiveDb && archiveDb.projects) {
+          console.log('Loaded archive database:', archiveDb.projects.length, 'archived projects');
+          // Add archived projects to the main projects array
+          archiveDb.projects.forEach(archivedProject => {
+            // Check if project already exists
+            const existingIndex = projects.findIndex(p => p.id === archivedProject.id);
+            if (existingIndex === -1) {
+              projects.push(archivedProject);
+            } else {
+              // Update existing project with archive data
+              projects[existingIndex] = archivedProject;
+            }
+          });
+          ensureProjectManager().setProjects(projects);
+        }
+      } catch (archiveErr) {
+        console.warn('Failed to load archive database:', archiveErr);
+      }
     }
   } catch (err) {
     console.error('Error loading database:', err);
     projects = await window.electronAPI.getProjects();
     ensureProjectManager().setProjects(projects);
-    await ensureProjectManager().autoDetectMissingThumbnails(settings.storagePath);
   }
   setupEventListeners();
   console.log('Rendering dashboard with', targets.length, 'targets');
@@ -525,14 +635,33 @@ async function toggleProjectCompletion() {
   if (!currentProject) return;
   
   if (currentProject.status === 'completed') {
-    // Reopen project
-    currentProject.status = 'current';
-    currentProject.completedAt = null;
+    // Reactivate project - check if we should move it back
+    const isArchived = currentProject.libraryPath && currentProject.libraryPath === settings.archivePath;
+    
+    if (isArchived && settings.storagePath && settings.storagePath.trim() !== '') {
+      // Show modal asking if user wants to move back to active storage
+      showReactivateConfirmationModal(currentProject);
+    } else {
+      // Just mark as current without moving
+      await reactivateProjectWithoutMove();
+    }
   } else {
-    // Complete project
-    currentProject.status = 'completed';
-    currentProject.completedAt = new Date().toISOString();
+    // Complete project - check if we should move to archive
+    const archivePath = settings.archivePath;
+    
+    if (archivePath && archivePath.trim() !== '') {
+      // Show modal asking if user wants to move to archive
+      showArchiveConfirmationModal(currentProject, archivePath);
+    } else {
+      // No archive path set, just mark as complete
+      await completeProjectWithoutMove();
+    }
   }
+}
+
+async function completeProjectWithoutMove() {
+  currentProject.status = 'completed';
+  currentProject.completedAt = new Date().toISOString();
   
   // Update the project in the main array
   const projectIndex = projects.findIndex(p => p.id === currentProject.id);
@@ -543,8 +672,341 @@ async function toggleProjectCompletion() {
   // Save changes and refresh views
   await window.electronAPI.saveProjects(projects);
   populateProjectDetails(currentProject);
-  renderProjects(); // Refresh the projects view
+  renderProjects();
 }
+
+async function reactivateProjectWithoutMove() {
+  currentProject.status = 'current';
+  currentProject.completedAt = null;
+  
+  // Update the project in the main array
+  const projectIndex = projects.findIndex(p => p.id === currentProject.id);
+  if (projectIndex !== -1) {
+    projects[projectIndex] = currentProject;
+  }
+  
+  // Save changes and refresh views
+  await window.electronAPI.saveProjects(projects);
+  populateProjectDetails(currentProject);
+  renderProjects();
+}
+
+function showArchiveConfirmationModal(project, archivePath) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'archiveConfirmModal';
+  
+  const projectPath = project.path || `${settings.storagePath}/${project.name}`;
+  const destinationPath = `${archivePath}/${project.name}`;
+  
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Move Project to Archive?</h2>
+        <button class="modal-close" onclick="document.getElementById('archiveConfirmModal').remove()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>You're marking <strong>${project.name}</strong> as complete.</p>
+        <p>Would you like to move this project folder to your archive location?</p>
+        <div class="path-info">
+          <div class="path-label">From:</div>
+          <div class="path-value">${projectPath}</div>
+          <div class="path-label" style="margin-top: 10px;">To:</div>
+          <div class="path-value">${destinationPath}</div>
+        </div>
+        <p class="hint">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="vertical-align: middle;">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+          This will physically move the folder to free up space on your local drive.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="handleArchiveChoice(false)">
+          Don't Move - Just Mark Complete
+        </button>
+        <button class="btn btn-primary" onclick="handleArchiveChoice(true)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="margin-right: 5px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Move to Archive
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+function showReactivateConfirmationModal(project) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'reactivateConfirmModal';
+  
+  const projectPath = project.path || `${settings.archivePath}/${project.name}`;
+  const destinationPath = `${settings.storagePath}/${project.name}`;
+  
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Reactivate Archived Project?</h2>
+        <button class="modal-close" onclick="document.getElementById('reactivateConfirmModal').remove()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>You're reactivating <strong>${project.name}</strong>.</p>
+        <p>Would you like to move this project folder back to your active storage location?</p>
+        <div class="path-info">
+          <div class="path-label">From:</div>
+          <div class="path-value">${projectPath}</div>
+          <div class="path-label" style="margin-top: 10px;">To:</div>
+          <div class="path-value">${destinationPath}</div>
+        </div>
+        <p class="hint">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="vertical-align: middle;">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+          This will physically move the folder back to your local drive for continued work.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="handleReactivateChoice(false)">
+          Don't Move - Just Mark Active
+        </button>
+        <button class="btn btn-primary" onclick="handleReactivateChoice(true)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="margin-right: 5px;">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          Move Back to Active Storage
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+async function handleArchiveChoice(shouldMove) {
+  const modal = document.getElementById('archiveConfirmModal');
+  if (modal) modal.remove();
+  
+  if (shouldMove) {
+    await completeProjectAndMove();
+  } else {
+    await completeProjectWithoutMove();
+  }
+}
+
+async function handleReactivateChoice(shouldMove) {
+  const modal = document.getElementById('reactivateConfirmModal');
+  if (modal) modal.remove();
+  
+  if (shouldMove) {
+    await reactivateProjectAndMove();
+  } else {
+    await reactivateProjectWithoutMove();
+  }
+}
+
+async function completeProjectAndMove() {
+  const projectPath = currentProject.path || `${settings.storagePath}/${currentProject.name}`;
+  const destinationPath = `${settings.archivePath}/${currentProject.name}`;
+  
+  try {
+    // Show detailed progress modal
+    const progressModal = showDetailedProgressModal();
+    
+    // Set up progress listener
+    const progressListener = (data) => {
+      updateProgressModal(data);
+    };
+    window.electronAPI.onMoveProgress(progressListener);
+    
+    // Move the folder
+    const result = await window.electronAPI.moveFolder(projectPath, destinationPath);
+    
+    // Clean up listener
+    window.electronAPI.removeAllListeners('move-progress');
+    
+    // Close progress modal
+    progressModal.remove();
+    
+    if (result.success) {
+      // Update project with new path and mark as complete
+      currentProject.status = 'completed';
+      currentProject.completedAt = new Date().toISOString();
+      currentProject.path = destinationPath;
+      currentProject.libraryPath = settings.archivePath;
+      
+      // Update the project in the main array
+      const projectIndex = projects.findIndex(p => p.id === currentProject.id);
+      if (projectIndex !== -1) {
+        projects[projectIndex] = currentProject;
+      }
+      
+      // Save changes and refresh views
+      await window.electronAPI.saveProjects(projects);
+      await persistLibrary();
+      
+      // Save to archive's .constellation file
+      await persistArchiveLibrary();
+      
+      populateProjectDetails(currentProject);
+      renderProjects();
+      
+      // Show success message
+      showSuccessMessage(`Project moved to archive successfully!`);
+    } else {
+      throw new Error(result.error || 'Failed to move project');
+    }
+  } catch (error) {
+    console.error('Error moving project to archive:', error);
+    if (window.showAlert) {
+      window.showAlert('Move Failed', `Failed to move project to archive: ${error.message}`, 'error');
+    } else {
+      alert(`Failed to move project to archive: ${error.message}`);
+    }
+  }
+}
+
+async function reactivateProjectAndMove() {
+  const projectPath = currentProject.path || `${settings.archivePath}/${currentProject.name}`;
+  const destinationPath = `${settings.storagePath}/${currentProject.name}`;
+  
+  try {
+    // Show detailed progress modal
+    const progressModal = showDetailedProgressModal('Reactivating Project');
+    
+    // Set up progress listener
+    const progressListener = (data) => {
+      updateProgressModal(data);
+    };
+    window.electronAPI.onMoveProgress(progressListener);
+    
+    // Move the folder back
+    const result = await window.electronAPI.moveFolder(projectPath, destinationPath);
+    
+    // Clean up listener
+    window.electronAPI.removeAllListeners('move-progress');
+    
+    // Close progress modal
+    progressModal.remove();
+    
+    if (result.success) {
+      // Update project with new path and mark as current
+      currentProject.status = 'current';
+      currentProject.completedAt = null;
+      currentProject.path = destinationPath;
+      currentProject.libraryPath = settings.storagePath;
+      
+      // Update the project in the main array
+      const projectIndex = projects.findIndex(p => p.id === currentProject.id);
+      if (projectIndex !== -1) {
+        projects[projectIndex] = currentProject;
+      }
+      
+      // Save changes and refresh views
+      await window.electronAPI.saveProjects(projects);
+      await persistLibrary();
+      
+      // Update archive's .constellation file (remove from there)
+      await persistArchiveLibrary();
+      
+      populateProjectDetails(currentProject);
+      renderProjects();
+      
+      // Show success message
+      showSuccessMessage(`Project reactivated successfully!`);
+    } else {
+      throw new Error(result.error || 'Failed to move project');
+    }
+  } catch (error) {
+    console.error('Error reactivating project:', error);
+    if (window.showAlert) {
+      window.showAlert('Move Failed', `Failed to reactivate project: ${error.message}`, 'error');
+    } else {
+      alert(`Failed to reactivate project: ${error.message}`);
+    }
+  }
+}
+
+function showDetailedProgressModal(title = 'Moving Project to Archive') {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'progressModal';
+  modal.innerHTML = `
+    <div class="modal-content" style="min-width: 500px; padding: 30px;">
+      <h3 style="margin-top: 0; margin-bottom: 20px;">${title}</h3>
+      
+      <div style="margin-bottom: 20px;">
+        <div style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">Current File:</div>
+        <div id="currentFileName" style="font-family: monospace; font-size: 0.85em; color: var(--text-primary); margin-bottom: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Preparing...</div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span id="overallProgress" style="color: var(--text-secondary);">0 / 0 files</span>
+          <span id="fileProgress" style="font-size: 1.3em; font-weight: bold; color: var(--accent-purple);">0%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div id="overallProgressBar" class="progress-bar-fill" style="width: 0%"></div>
+        </div>
+      </div>
+      
+      <p style="color: var(--text-muted); font-size: 0.85em; margin: 15px 0 0 0; text-align: center;">
+        Please wait while your project is being moved...
+      </p>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function updateProgressModal(data) {
+  const fileNameEl = document.getElementById('currentFileName');
+  const fileProgressEl = document.getElementById('fileProgress');
+  const overallProgressEl = document.getElementById('overallProgress');
+  const overallProgressBar = document.getElementById('overallProgressBar');
+  
+  if (fileNameEl) fileNameEl.textContent = data.fileName;
+  if (fileProgressEl) fileProgressEl.textContent = `${Math.round(data.progress)}%`;
+  if (overallProgressEl) overallProgressEl.textContent = `${data.completed} / ${data.total} files`;
+  if (overallProgressBar) overallProgressBar.style.width = `${data.progress}%`;
+}
+
+function showSuccessMessage(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast-message success';
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--success);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 10000;
+    animation: slideIn 0.3s ease;
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// Make functions globally accessible
+window.handleArchiveChoice = handleArchiveChoice;
+window.handleReactivateChoice = handleReactivateChoice;
 
 // Delete project function
 async function deleteProject() { if (!currentProject) return; const modal = ensureProjectUI().createDeleteProjectModal(currentProject); document.body.appendChild(modal); }

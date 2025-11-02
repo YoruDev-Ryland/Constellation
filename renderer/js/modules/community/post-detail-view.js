@@ -337,8 +337,7 @@ class PostDetailView {
       likeBtn.addEventListener('click', async () => {
         const success = await this.handleLike(this.post.id, this.post.is_liked);
         if (success) {
-          this.post.is_liked = !this.post.is_liked;
-          this.post.likes_count += this.post.is_liked ? 1 : -1;
+          // handleLike already updated this.post.is_liked and this.post.likes_count
           likeBtn.classList.toggle('active', this.post.is_liked);
           likeBtn.querySelector('.detail-likes-count').textContent = this.post.likes_count || 0;
         }

@@ -305,6 +305,29 @@ class ProjectUI {
         }
       }, { once: false });
     }
+
+    // Update the Complete/Reactivate button based on project status
+    const completeBtn = document.getElementById('completeProjectBtn');
+    if (completeBtn) {
+      if (project.status === 'completed') {
+        completeBtn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          Reactivate
+        `;
+        completeBtn.className = 'btn-primary';
+      } else {
+        completeBtn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+          Complete
+        `;
+        completeBtn.className = 'btn-success';
+      }
+    }
     // --- Project images gallery (JPGs) ---
     // Create container if missing
     let galleryWrap = document.getElementById('projectImagesGalleryWrap');

@@ -120,6 +120,60 @@ class ProjectManager {
     await this.save();
     return this.projects;
   }
+
+  async cleanupOrphanedProjects(storagePath) {
+    if (!storagePath) return { removed: [], kept: this.projects };
+    
+    const removed = [];
+    const kept = [];
+    
+    this.log('Starting orphaned project cleanup', { totalProjects: this.projects.length, storagePath });
+    
+    for (const project of this.projects) {
+      let shouldKeep = true;
+      let reason = null;
+      
+      // Check if project directory exists
+      const projectPath = project.path || `${storagePath}/${project.name}`;
+      const pathCheck = await this.electronAPI.checkPathExists?.(projectPath);
+      
+      if (pathCheck && !pathCheck.exists) {
+        shouldKeep = false;
+        reason = `Project directory not found: ${projectPath}`;
+      }
+      
+      // If thumbnail path is set, check if it exists
+      if (shouldKeep && project.thumbnailPath) {
+        const thumbCheck = await this.electronAPI.checkPathExists?.(project.thumbnailPath);
+        if (thumbCheck && !thumbCheck.exists) {
+          // Don't remove project just for missing thumbnail, but clear the path
+          this.log('Clearing invalid thumbnail path', { project: project.name, oldPath: project.thumbnailPath });
+          project.thumbnailPath = null;
+        }
+      }
+      
+      if (shouldKeep) {
+        kept.push(project);
+      } else {
+        removed.push({ project, reason });
+        this.log('Removing orphaned project', { project: project.name, reason });
+      }
+    }
+    
+    if (removed.length > 0) {
+      this.projects = kept;
+      await this.save();
+      this.log('Orphaned project cleanup complete', { 
+        removed: removed.length, 
+        kept: kept.length,
+        removedProjects: removed.map(r => ({ name: r.project.name, reason: r.reason }))
+      });
+    } else {
+      this.log('No orphaned projects found');
+    }
+    
+    return { removed, kept };
+  }
 }
 
 window.ProjectManager = ProjectManager;

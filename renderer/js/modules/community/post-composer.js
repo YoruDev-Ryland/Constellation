@@ -242,9 +242,9 @@ class PostComposer {
    * Handle image selection
    */
   handleImageSelection(file, preview, previewImage, placeholder) {
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('Image must be less than 10MB');
+    // Validate file size (15MB max)
+    if (file.size > 15 * 1024 * 1024) {
+      alert('Image must be less than 15MB');
       return;
     }
 
