@@ -1085,6 +1085,42 @@ ipcMain.handle('select-folder', async (event, options) => {
   }
 });
 
+// Save file dialog
+ipcMain.handle('save-file', async (event, options) => {
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: options.title || 'Save File',
+      defaultPath: options.defaultPath || 'untitled',
+      filters: options.filters || []
+    });
+    return result;
+  } catch (error) {
+    console.error('Error showing save dialog:', error);
+    return { canceled: true, error: error.message };
+  }
+});
+
+// Write file
+ipcMain.handle('write-file', async (event, filePath, data) => {
+  try {
+    await fs.writeFile(filePath, data);
+    return { success: true };
+  } catch (error) {
+    console.error('Error writing file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Join path
+ipcMain.handle('join-path', async (event, ...paths) => {
+  try {
+    return path.join(...paths);
+  } catch (error) {
+    console.error('Error joining path:', error);
+    return null;
+  }
+});
+
 // Launch external program
 ipcMain.handle('launch-program', async (event, programPath, args = []) => {
   try {

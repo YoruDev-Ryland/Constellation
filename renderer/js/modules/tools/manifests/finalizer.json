@@ -1,0 +1,9 @@
+{
+  "id": "finalizer",
+  "name": "Finalizer",
+  "description": "Add watermarks and logos to your finalized images with precise positioning control and automatic export to your finals folder.",
+  "icon": "fas fa-stamp",
+  "buttonId": "finalizerBtn",
+  "enabled": true,
+  "order": 4
+}

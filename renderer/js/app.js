@@ -1272,6 +1272,41 @@ async function openInstagramPostCreator() {
   }
 }
 
+// Finalizer Integration
+async function openFinalizer() {
+  console.log('Opening Finalizer');
+  
+  try {
+    // Switch to Finalizer view
+    switchView('finalizerView');
+    
+    // Initialize the Finalizer if not already done
+    if (!window.finalizerInstance) {
+      // Give the DOM a moment to update before initializing
+      setTimeout(() => {
+        try {
+          console.log('Initializing Finalizer...');
+          const containerEl = document.getElementById('finalizerContainer');
+          if (!containerEl) {
+            console.error('Finalizer container not found: #finalizerContainer');
+            return;
+          }
+          window.finalizerInstance = new Finalizer('finalizerContainer');
+          console.log('Finalizer initialized successfully');
+        } catch (error) {
+          console.error('Error initializing Finalizer:', error);
+          alert('Error initializing Finalizer: ' + error.message);
+        }
+      }, 100);
+    }
+    
+    console.log('Finalizer view opened successfully');
+  } catch (error) {
+    console.error('Error opening Finalizer:', error);
+    alert('Error opening Finalizer: ' + error.message);
+  }
+}
+
 // H-R Diagram Integration
 function createHRDiagram() {
   console.log('Opening H-R Diagram view');
@@ -1375,6 +1410,24 @@ function initializeToolsView() {
     console.warn('Instagram Post Creator button not found in DOM');
   }
 
+  // Add event listener for Finalizer button if it exists
+  const finalizerButton = document.getElementById('finalizerBtn');
+  if (finalizerButton) {
+    // Remove any existing listeners
+    finalizerButton.replaceWith(finalizerButton.cloneNode(true));
+    const newFinalizerButton = document.getElementById('finalizerBtn');
+    
+    newFinalizerButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Finalizer button clicked');
+      openFinalizer();
+    });
+    
+    console.log('Finalizer button listener added');
+  } else {
+    console.warn('Finalizer button not found in DOM');
+  }
+
   // Add back to tools button handler
   const backToToolsBtn = document.getElementById('backToToolsBtn');
   if (backToToolsBtn) {
@@ -1406,6 +1459,17 @@ function initializeToolsView() {
       switchView('tools');
     });
     console.log('Back to Tools from Instagram Post Creator button listener added');
+  }
+
+  // Finalizer back button
+  const backToToolsFromFinalizerBtn = document.getElementById('backToToolsFromFinalizerBtn');
+  if (backToToolsFromFinalizerBtn) {
+    backToToolsFromFinalizerBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Back to Tools from Finalizer button clicked');
+      switchView('tools');
+    });
+    console.log('Back to Tools from Finalizer button listener added');
   }
 }
 

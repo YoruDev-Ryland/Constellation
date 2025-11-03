@@ -42,6 +42,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Sub-Frame Analyzer APIs
   selectFile: (options) => ipcRenderer.invoke('select-file', options),
   selectFolder: (options) => ipcRenderer.invoke('select-folder', options),
+  saveFile: (options) => ipcRenderer.invoke('save-file', options),
+  writeFile: (filePath, data) => ipcRenderer.invoke('write-file', filePath, data),
+  joinPath: (...paths) => ipcRenderer.invoke('join-path', ...paths),
   scanFitsFolder: (folderPath) => ipcRenderer.invoke('scan-fits-folder', folderPath),
   analyzeFitsStars: (filePath, options) => ipcRenderer.invoke('analyze-fits-stars', filePath, options),
   createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath),
