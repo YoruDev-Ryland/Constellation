@@ -128,7 +128,8 @@
       "window": {
         "width": 540,
         "height": 400
-      }
+      },
+      "background": null
     }
   }
 }
