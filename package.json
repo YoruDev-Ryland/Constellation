@@ -112,7 +112,26 @@
       "shortcutName": "Constellation"
     },
     "dmg": {
-      "title": "Constellation ${version}"
+      "title": "Constellation ${version}",
+      "backgroundColor": "#1a1a1a",
+      "icon": "build/icon.icns",
+      "iconSize": 80,
+      "window": {
+        "width": 540,
+        "height": 400
+      },
+      "contents": [
+        {
+          "x": 140,
+          "y": 220
+        },
+        {
+          "x": 400,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     }
   }
 }
