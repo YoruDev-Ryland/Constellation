@@ -248,7 +248,11 @@ class PostCard {
     if (deleteBtn && this.onDelete) {
       deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (confirm('Are you sure you want to delete this post?')) {
+        const confirmed = window.showConfirm 
+          ? await window.showConfirm('Delete Post', 'Are you sure you want to delete this post? This action cannot be undone.', 'warning')
+          : confirm('Are you sure you want to delete this post?');
+        
+        if (confirmed) {
           await this.onDelete(this.post.id);
         }
         if (menu) menu.style.display = 'none';

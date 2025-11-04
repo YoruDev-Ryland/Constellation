@@ -557,6 +557,14 @@
       this.composerOverlay.appendChild(composer.render());
       document.body.appendChild(this.composerOverlay);
 
+      // Focus the textarea after a brief delay to ensure it's rendered
+      setTimeout(() => {
+        const textarea = this.composerOverlay.querySelector('#postContent');
+        if (textarea) {
+          textarea.focus();
+        }
+      }, 100);
+
       // Close on overlay click
       this.composerOverlay.addEventListener('click', (e) => {
         if (e.target === this.composerOverlay) {
@@ -608,6 +616,14 @@
 
       this.composerOverlay.appendChild(composer.render());
       document.body.appendChild(this.composerOverlay);
+
+      // Focus the textarea after a brief delay to ensure it's rendered
+      setTimeout(() => {
+        const textarea = this.composerOverlay.querySelector('#postContent');
+        if (textarea) {
+          textarea.focus();
+        }
+      }, 100);
 
       // Close handlers
       this.composerOverlay.addEventListener('click', (e) => {

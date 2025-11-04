@@ -1,253 +1,503 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: file: blob:; connect-src 'self' https:;">
-  <title>Constellation - Setup</title>
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/modules/modal-manager.css">
-</head>
-<body class="setup-page">
-  <div class="setup-container">
-    <div class="setup-header">
-      <div class="logo">
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <circle cx="24" cy="24" r="20" stroke="url(#gradient)" stroke-width="2"/>
-          <circle cx="24" cy="24" r="3" fill="url(#gradient)"/>
-          <circle cx="15" cy="18" r="1.5" fill="url(#gradient)"/>
-          <circle cx="33" cy="20" r="1.5" fill="url(#gradient)"/>
-          <circle cx="30" cy="32" r="1.5" fill="url(#gradient)"/>
-          <defs>
-            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#667eea"/>
-              <stop offset="100%" style="stop-color:#764ba2"/>
-            </linearGradient>
-          </defs>
-        </svg>
-        <h1>Constellation</h1>
-      </div>
-      <p class="subtitle">Let's get your astrophotography workflow organized</p>
-    </div>
+<!DOCTYPE html><!DOCTYPE html>
 
-    <div class="setup-content">
-      <div class="setup-step" id="step1">
-        <h2>Storage Location</h2>
-        <p>Choose the primary directory where your astrophotography images are stored</p>
-        
-        <div class="form-group">
-          <label for="storagePath">Library Path</label>
-          <div class="input-group">
-            <input type="text" id="storagePath" placeholder="No folder selected" readonly>
-            <button class="btn btn-secondary" id="selectStorageBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
-              </svg>
-              Browse
-            </button>
-          </div>
-        </div>
-      </div>
+<html lang="en"><html lang="en">
 
-      <div class="setup-step" id="step1b">
-        <h2>Finals Folder</h2>
-        <p>Location where your final processed images are stored (JPG, PNG, TIFF, etc.)</p>
-        
-        <div class="form-group">
-          <label for="finalsPath">Finals Path</label>
-          <div class="input-group">
-            <input type="text" id="finalsPath" placeholder="Optional - Leave empty to search within Library Path" readonly>
-            <button class="btn btn-secondary" id="selectFinalsBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
-              </svg>
-              Browse
-            </button>
-            <button class="btn btn-secondary" id="clearFinalsBtn">Clear</button>
-          </div>
-          <p class="hint">This folder will be scanned recursively for final images in nested folders</p>
-        </div>
-      </div>
+<head><head>
 
-      <div class="setup-step" id="step1c">
-        <h2>Archive/Completed Folder</h2>
-        <p>Location to move completed projects for archival storage (e.g., NAS, external drive)</p>
-        
-        <div class="form-group">
-          <label for="archivePath">Archive Path</label>
-          <div class="input-group">
-            <input type="text" id="archivePath" placeholder="Optional - Projects won't be moved when completed" readonly>
-            <button class="btn btn-secondary" id="selectArchiveBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
-              </svg>
-              Browse
-            </button>
-            <button class="btn btn-secondary" id="clearArchiveBtn">Clear</button>
-          </div>
-          <p class="hint">When marking a project complete, you'll be asked if you want to move it here</p>
-        </div>
-      </div>
+  <meta charset="UTF-8">  <meta charset="UTF-8">
 
-      <div class="setup-step" id="step2">
-        <h2>Cleanup Folders</h2>
-        <p>Folder names that contain temporary processing files safe for deletion</p>
-        
-        <div class="form-group">
-          <label for="cleanupInput">Add cleanup folder name</label>
-          <div class="input-group">
-            <input type="text" id="cleanupInput" placeholder="e.g., Process, Temp, Working">
-            <button class="btn btn-secondary" id="addCleanupBtn">Add</button>
-          </div>
-        </div>
-        
-        <div class="cleanup-tags" id="cleanupTags"></div>
-      </div>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-      <div class="setup-step" id="step3">
-        <h2>Ignore Folders</h2>
-        <p>Software and system folders to exclude from scans</p>
-        
-        <div class="form-group">
-          <label for="ignoreInput">Add folder to ignore</label>
-          <div class="input-group">
-            <input type="text" id="ignoreInput" placeholder="e.g., PixInsight, Photoshop">
-            <button class="btn btn-secondary" id="addIgnoreBtn">Add</button>
-          </div>
-        </div>
-        
-        <div class="ignore-tags" id="ignoreTags"></div>
-      </div>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: file: blob:; connect-src 'self' https:;">  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: file: blob:; connect-src 'self' https:;">
 
-      <div class="setup-step" id="step4">
-        <h2>Background Scanning</h2>
-        <p>Automatically scan for new images and projects in the background</p>
-        
-        <div class="checkbox-group">
-          <input type="checkbox" id="enableBackgroundScan" checked>
-          <label for="enableBackgroundScan">Enable automatic background scanning</label>
-        </div>
-        
-        <div class="form-group" id="backgroundFrequencyGroup">
-          <label for="backgroundScanHours">Scan frequency</label>
-          <select id="backgroundScanHours">
-            <option value="1">Every hour</option>
-            <option value="2">Every 2 hours</option>
-            <option value="4" selected>Every 4 hours</option>
-            <option value="8">Every 8 hours</option>
-            <option value="24">Once daily</option>
-          </select>
-        </div>
-      </div>
+  <title>Constellation - Setup</title>  <title>Constellation - Setup</title>
 
-      <div class="setup-step" id="step5">
-        <h2>Observatory Location</h2>
-        <p>Set your observing location for accurate altitude calculations</p>
-        
-        <div class="form-group">
-          <label for="observatoryName">Observatory Name (Optional)</label>
-          <input type="text" id="observatoryName" placeholder="e.g., My Backyard Observatory">
-        </div>
-        
-        <div class="observatory-presets">
-          <label>Quick Select Popular Remote Observatories:</label>
-          <div class="preset-buttons">
-            <button type="button" class="btn btn-secondary preset-btn" data-preset="sfro">
-              <div class="preset-name">SFRO</div>
-              <div class="preset-details">Starfront Remote Observatory<br>Texas, USA</div>
-            </button>
-            <button type="button" class="btn btn-secondary preset-btn" data-preset="udro">
-              <div class="preset-name">UDRO</div>
-              <div class="preset-details">Utah Desert Remote Observatory<br>Utah, USA</div>
-            </button>
+  <link rel="stylesheet" href="css/styles.css">  <link rel="stylesheet" href="css/styles.css">
+
+  <link rel="stylesheet" href="css/modules/modal-manager.css">  <link rel="stylesheet" href="css/modules/modal-manager.css">
+
+</head></head>
+
+<body class="setup-page"><body class="setup-page">
+
+  <div class="setup-container">  <div class="setup-container">
+
+    <div class="setup-header">    <div class="setup-header">
+
+      <div class="logo">      <div class="logo">
+
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+
+          <circle cx="24" cy="24" r="20" stroke="url(#gradient)" stroke-width="2"/>          <circle cx="24" cy="24" r="20" stroke="url(#gradient)" stroke-width="2"/>
+
+          <circle cx="24" cy="24" r="3" fill="url(#gradient)"/>          <circle cx="24" cy="24" r="3" fill="url(#gradient)"/>
+
+          <circle cx="15" cy="18" r="1.5" fill="url(#gradient)"/>          <circle cx="15" cy="18" r="1.5" fill="url(#gradient)"/>
+
+          <circle cx="33" cy="20" r="1.5" fill="url(#gradient)"/>          <circle cx="33" cy="20" r="1.5" fill="url(#gradient)"/>
+
+          <circle cx="30" cy="32" r="1.5" fill="url(#gradient)"/>          <circle cx="30" cy="32" r="1.5" fill="url(#gradient)"/>
+
+          <defs>          <defs>
+
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+
+              <stop offset="0%" style="stop-color:#667eea"/>              <stop offset="0%" style="stop-color:#667eea"/>
+
+              <stop offset="100%" style="stop-color:#764ba2"/>              <stop offset="100%" style="stop-color:#764ba2"/>
+
+            </linearGradient>            </linearGradient>
+
+          </defs>          </defs>
+
+        </svg>        </svg>
+
+        <h1>Constellation</h1>        <h1>Constellation</h1>
+
+      </div>      </div>
+
+      <p class="subtitle">Let's get your astrophotography workflow organized</p>      <p class="subtitle">Let's get your astrophotography workflow organized</p>
+
+    </div>    </div>
+
+
+
+    <div class="setup-content">    <div class="setup-content">
+
+      <div class="setup-step" id="step1">      <div class="setup-step" id="step1">
+
+        <h2>Storage Location</h2>        <h2>Storage Location</h2>
+
+        <p>Choose the primary directory where your astrophotography images are stored</p>        <p>Choose the primary directory where your astrophotography images are stored</p>
+
+                
+
+        <div class="form-group">        <div class="form-group">
+
+          <label for="storagePath">Library Path</label>          <label for="storagePath">Library Path</label>
+
+          <div class="input-group">          <div class="input-group">
+
+            <input type="text" id="storagePath" placeholder="No folder selected" readonly>            <input type="text" id="storagePath" placeholder="No folder selected" readonly>
+
+            <button class="btn btn-secondary" id="selectStorageBtn">            <button class="btn btn-secondary" id="selectStorageBtn">
+
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+
+                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
+
+              </svg>              </svg>
+
+              Browse              Browse
+
+            </button>            </button>
+
+          </div>          </div>
+
+        </div>        </div>
+
+      </div>      </div>
+
+
+
+      <div class="setup-step" id="step2">      <div class="setup-step" id="step1b">
+
+        <h2>Finals Folder</h2>        <h2>Finals Folder</h2>
+
+        <p>Location where your final processed images are stored (JPG, PNG, TIFF, etc.)</p>        <p>Location where your final processed images are stored (JPG, PNG, TIFF, etc.)</p>
+
+                
+
+        <div class="form-group">        <div class="form-group">
+
+          <label for="finalsPath">Finals Path</label>          <label for="finalsPath">Finals Path</label>
+
+          <div class="input-group">          <div class="input-group">
+
+            <input type="text" id="finalsPath" placeholder="Optional - Leave empty to search within Library Path" readonly>            <input type="text" id="finalsPath" placeholder="Optional - Leave empty to search within Library Path" readonly>
+
+            <button class="btn btn-secondary" id="selectFinalsBtn">            <button class="btn btn-secondary" id="selectFinalsBtn">
+
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+
+                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
+
+              </svg>              </svg>
+
+              Browse              Browse
+
+            </button>            </button>
+
+            <button class="btn btn-secondary" id="clearFinalsBtn">Clear</button>            <button class="btn btn-secondary" id="clearFinalsBtn">Clear</button>
+
+          </div>          </div>
+
+          <p class="hint">This folder will be scanned recursively for final images in nested folders</p>          <p class="hint">This folder will be scanned recursively for final images in nested folders</p>
+
+        </div>        </div>
+
+      </div>      </div>
+
+
+
+      <div class="setup-step" id="step3">      <div class="setup-step" id="step1c">
+
+        <h2>Archive/Completed Folder</h2>        <h2>Archive/Completed Folder</h2>
+
+        <p>Location to move completed projects for archival storage (e.g., NAS, external drive)</p>        <p>Location to move completed projects for archival storage (e.g., NAS, external drive)</p>
+
+                
+
+        <div class="form-group">        <div class="form-group">
+
+          <label for="archivePath">Archive Path</label>          <label for="archivePath">Archive Path</label>
+
+          <div class="input-group">          <div class="input-group">
+
+            <input type="text" id="archivePath" placeholder="Optional - Projects won't be moved when completed" readonly>            <input type="text" id="archivePath" placeholder="Optional - Projects won't be moved when completed" readonly>
+
+            <button class="btn btn-secondary" id="selectArchiveBtn">            <button class="btn btn-secondary" id="selectArchiveBtn">
+
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+
+                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>                <path d="M3 7V5C3 3.89543 3.89543 3 5 3H9L11 5H19C20.1046 5 21 5.89543 21 7V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V7Z"/>
+
+              </svg>              </svg>
+
+              Browse              Browse
+
+            </button>            </button>
+
+            <button class="btn btn-secondary" id="clearArchiveBtn">Clear</button>            <button class="btn btn-secondary" id="clearArchiveBtn">Clear</button>
+
+          </div>          </div>
+
+          <p class="hint">When marking a project complete, you'll be asked if you want to move it here</p>          <p class="hint">When marking a project complete, you'll be asked if you want to move it here</p>
+
+        </div>        </div>
+
+      </div>      </div>
+
+
+
+      <div class="setup-step" id="step4">      <div class="setup-step" id="step2">
+
+        <h2>Cleanup Folders</h2>        <h2>Cleanup Folders</h2>
+
+        <p>Folder names that contain temporary processing files safe for deletion</p>        <p>Folder names that contain temporary processing files safe for deletion</p>
+
+                
+
+        <div class="form-group">        <div class="form-group">
+
+          <label for="cleanupInput">Add cleanup folder name</label>          <label for="cleanupInput">Add cleanup folder name</label>
+
+          <div class="input-group">          <div class="input-group">
+
+            <input type="text" id="cleanupInput" placeholder="e.g., Process, Temp, Working">            <input type="text" id="cleanupInput" placeholder="e.g., Process, Temp, Working">
+
+            <button class="btn btn-secondary" id="addCleanupBtn">Add</button>            <button class="btn btn-secondary" id="addCleanupBtn">Add</button>
+
+          </div>          </div>
+
+        </div>        </div>
+
+                
+
+        <div class="cleanup-tags" id="cleanupTags"></div>        <div class="cleanup-tags" id="cleanupTags"></div>
+
+      </div>      </div>
+
+
+
+      <div class="setup-step" id="step5">      <div class="setup-step" id="step3">
+
+        <h2>Ignore Folders</h2>        <h2>Ignore Folders</h2>
+
+        <p>Software and system folders to exclude from scans</p>        <p>Software and system folders to exclude from scans</p>
+
+                
+
+        <div class="form-group">        <div class="form-group">
+
+          <label for="ignoreInput">Add folder to ignore</label>          <label for="ignoreInput">Add folder to ignore</label>
+
+          <div class="input-group">          <div class="input-group">
+
+            <input type="text" id="ignoreInput" placeholder="e.g., PixInsight, Photoshop">            <input type="text" id="ignoreInput" placeholder="e.g., PixInsight, Photoshop">
+
+            <button class="btn btn-secondary" id="addIgnoreBtn">Add</button>            <button class="btn btn-secondary" id="addIgnoreBtn">Add</button>
+
+          </div>          </div>
+
+        </div>        </div>
+
+                
+
+        <div class="ignore-tags" id="ignoreTags"></div>        <div class="ignore-tags" id="ignoreTags"></div>
+
+      </div>      </div>
+
+
+
+      <div class="setup-step" id="step6">      <div class="setup-step" id="step4">
+
+        <h2>Observatory Location</h2>        <h2>Background Scanning</h2>
+
+        <p>Set your observing location for accurate altitude calculations</p>        <p>Automatically scan for new images and projects in the background</p>
+
+                
+
+        <div class="form-group">        <div class="checkbox-group">
+
+          <label for="observatoryName">Observatory Name (Optional)</label>          <input type="checkbox" id="enableBackgroundScan" checked>
+
+          <input type="text" id="observatoryName" placeholder="e.g., My Backyard Observatory">          <label for="enableBackgroundScan">Enable automatic background scanning</label>
+
+        </div>        </div>
+
+                
+
+        <div class="observatory-presets">        <div class="form-group" id="backgroundFrequencyGroup">
+
+          <label>Quick Select Popular Remote Observatories:</label>          <label for="backgroundScanHours">Scan frequency</label>
+
+          <div class="preset-buttons">          <select id="backgroundScanHours">
+
+            <button type="button" class="btn btn-secondary preset-btn" data-preset="sfro">            <option value="1">Every hour</option>
+
+              <div class="preset-name">SFRO</div>            <option value="2">Every 2 hours</option>
+
+              <div class="preset-details">Starfront Remote Observatory<br>Texas, USA</div>            <option value="4" selected>Every 4 hours</option>
+
+            </button>            <option value="8">Every 8 hours</option>
+
+            <button type="button" class="btn btn-secondary preset-btn" data-preset="udro">            <option value="24">Once daily</option>
+
+              <div class="preset-name">UDRO</div>          </select>
+
+              <div class="preset-details">Utah Desert Remote Observatory<br>Utah, USA</div>        </div>
+
+            </button>      </div>
+
             <button type="button" class="btn btn-secondary preset-btn" data-preset="sl">
-              <div class="preset-name">Sierra-Leona</div>
-              <div class="preset-details">Sierra-Leona Observatory<br>Animas, NM, USA</div>
+
+              <div class="preset-name">Sierra-Leona</div>      <div class="setup-step" id="step5">
+
+              <div class="preset-details">Sierra-Leona Observatory<br>Animas, NM, USA</div>        <h2>Observatory Location</h2>
+
+            </button>        <p>Set your observing location for accurate altitude calculations</p>
+
+            <button type="button" class="btn btn-secondary preset-btn" data-preset="tio">        
+
+              <div class="preset-name">TIO</div>        <div class="form-group">
+
+              <div class="preset-details">Telescope.io Observatory<br>Nerpio, Spain</div>          <label for="observatoryName">Observatory Name (Optional)</label>
+
+            </button>          <input type="text" id="observatoryName" placeholder="e.g., My Backyard Observatory">
+
+          </div>        </div>
+
+        </div>        
+
+                <div class="observatory-presets">
+
+        <div class="form-row">          <label>Quick Select Popular Remote Observatories:</label>
+
+          <div class="form-group">          <div class="preset-buttons">
+
+            <label for="latitude">Latitude (°)</label>            <button type="button" class="btn btn-secondary preset-btn" data-preset="sfro">
+
+            <input type="number" id="latitude" placeholder="e.g., 36.463" step="0.000001" min="-90" max="90">              <div class="preset-name">SFRO</div>
+
+          </div>              <div class="preset-details">Starfront Remote Observatory<br>Texas, USA</div>
+
+          <div class="form-group">            </button>
+
+            <label for="longitude">Longitude (°)</label>            <button type="button" class="btn btn-secondary preset-btn" data-preset="udro">
+
+            <input type="number" id="longitude" placeholder="e.g., -105.821" step="0.000001" min="-180" max="180">              <div class="preset-name">UDRO</div>
+
+          </div>              <div class="preset-details">Utah Desert Remote Observatory<br>Utah, USA</div>
+
+          <div class="form-group">            </button>
+
+            <label for="elevation">Elevation (m)</label>            <button type="button" class="btn btn-secondary preset-btn" data-preset="sl">
+
+            <input type="number" id="elevation" placeholder="e.g., 2100" step="1" min="0" max="10000">              <div class="preset-name">Sierra-Leona</div>
+
+          </div>              <div class="preset-details">Sierra-Leona Observatory<br>Animas, NM, USA</div>
+
+        </div>            </button>
+
+                    <button type="button" class="btn btn-secondary preset-btn" data-preset="tio">
+
+        <p class="hint">Location is used for altitude timeline calculations and target visibility analysis</p>              <div class="preset-name">TIO</div>
+
+      </div>              <div class="preset-details">Telescope.io Observatory<br>Nerpio, Spain</div>
+
             </button>
-            <button type="button" class="btn btn-secondary preset-btn" data-preset="tio">
-              <div class="preset-name">TIO</div>
-              <div class="preset-details">Telescope.io Observatory<br>Nerpio, Spain</div>
-            </button>
-          </div>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-group">
-            <label for="latitude">Latitude (°)</label>
-            <input type="number" id="latitude" placeholder="e.g., 36.463" step="0.000001" min="-90" max="90">
-          </div>
-          <div class="form-group">
-            <label for="longitude">Longitude (°)</label>
-            <input type="number" id="longitude" placeholder="e.g., -105.821" step="0.000001" min="-180" max="180">
-          </div>
-          <div class="form-group">
-            <label for="elevation">Elevation (m)</label>
-            <input type="number" id="elevation" placeholder="e.g., 2100" step="1" min="0" max="10000">
-          </div>
-        </div>
-        
-        <p class="hint">Location is used for altitude timeline calculations and target visibility analysis</p>
-      </div>
 
-      <div class="setup-step" id="step6">
-        <h2>Premium License</h2>
-        <p>Unlock advanced features with a premium license key</p>
-        
-        <div id="licenseStatus" class="license-status free">
-          Free version - Limited features
-        </div>
-        
-        <div class="form-group" id="licenseActions">
-          <label for="licenseKeyInput">License Key</label>
-          <div class="input-group">
-            <input type="text" id="licenseKeyInput" placeholder="CONST-XXXXX-XXXXX-XXXXX-XXXXX" maxlength="29">
-            <button class="btn btn-success" id="activateLicenseBtn" disabled>Activate</button>
-          </div>
-        </div>
-        
-        <button class="btn btn-danger" id="deactivateLicenseBtn" style="display: none;">Deactivate License</button>
-      </div>
+      <div class="setup-step" id="step7">          </div>
 
-      <div class="setup-step" id="step7">
-        <h2>Third Party Program Support</h2>
-        <p>Configure paths to external tools and programs that Constellation can launch</p>
-        
-        <div class="form-group">
-          <label for="astroQCPath">AstroQC Sub-Frame Analyzer</label>
-          <div class="input-group">
-            <input type="text" id="astroQCPath" placeholder="Path to AstroQC executable" readonly>
-            <button class="btn btn-secondary" id="browseAstroQCBtn">Browse</button>
-          </div>
-          <p class="form-help">Select the path to your AstroQC sub-frame quality analyzer program</p>
-        </div>
-        
-        <div class="form-group">
-          <button class="btn btn-primary" id="testAstroQCBtn" disabled>Test AstroQC Launch</button>
-        </div>
-      </div>
+        <h2>Third Party Program Support</h2>        </div>
 
-      <div class="setup-step" id="step8">
-        <h2>Background Scanning</h2>
+        <p>Configure paths to external tools and programs that Constellation can launch</p>        
+
+                <div class="form-row">
+
+        <div class="form-group">          <div class="form-group">
+
+          <label for="astroQCPath">AstroQC Sub-Frame Analyzer</label>            <label for="latitude">Latitude (°)</label>
+
+          <div class="input-group">            <input type="number" id="latitude" placeholder="e.g., 36.463" step="0.000001" min="-90" max="90">
+
+            <input type="text" id="astroQCPath" placeholder="Path to AstroQC executable" readonly>          </div>
+
+            <button class="btn btn-secondary" id="browseAstroQCBtn">Browse</button>          <div class="form-group">
+
+          </div>            <label for="longitude">Longitude (°)</label>
+
+          <p class="form-help">Select the path to your AstroQC sub-frame quality analyzer program</p>            <input type="number" id="longitude" placeholder="e.g., -105.821" step="0.000001" min="-180" max="180">
+
+        </div>          </div>
+
+                  <div class="form-group">
+
+        <div class="form-group">            <label for="elevation">Elevation (m)</label>
+
+          <button class="btn btn-primary" id="testAstroQCBtn" disabled>Test AstroQC Launch</button>            <input type="number" id="elevation" placeholder="e.g., 2100" step="1" min="0" max="10000">
+
+        </div>          </div>
+
+      </div>        </div>
+
+        
+
+      <div class="setup-step" id="step8">        <p class="hint">Location is used for altitude timeline calculations and target visibility analysis</p>
+
+        <h2>Background Scanning</h2>      </div>
+
         <p>Automatically scan for new images and projects in the background</p>
-        
-        <div class="checkbox-group">
-          <input type="checkbox" id="enableBackgroundScan" checked>
-          <label for="enableBackgroundScan">Enable automatic background scanning</label>
-        </div>
-        
-        <div class="form-group" id="backgroundFrequencyGroup">
-          <label for="backgroundScanHours">Scan frequency</label>
-          <select id="backgroundScanHours">
-            <option value="1">Every hour</option>
-            <option value="2">Every 2 hours</option>
-            <option value="4" selected>Every 4 hours</option>
-            <option value="8">Every 8 hours</option>
-            <option value="24">Once daily</option>
-          </select>
-        </div>
+
+              <div class="setup-step" id="step6">
+
+        <div class="checkbox-group">        <h2>Premium License</h2>
+
+          <input type="checkbox" id="enableBackgroundScan" checked>        <p>Unlock advanced features with a premium license key</p>
+
+          <label for="enableBackgroundScan">Enable automatic background scanning</label>        
+
+        </div>        <div id="licenseStatus" class="license-status free">
+
+                  Free version - Limited features
+
+        <div class="form-group" id="backgroundFrequencyGroup">        </div>
+
+          <label for="backgroundScanHours">Scan frequency</label>        
+
+          <select id="backgroundScanHours">        <div class="form-group" id="licenseActions">
+
+            <option value="1">Every hour</option>          <label for="licenseKeyInput">License Key</label>
+
+            <option value="2">Every 2 hours</option>          <div class="input-group">
+
+            <option value="4" selected>Every 4 hours</option>            <input type="text" id="licenseKeyInput" placeholder="CONST-XXXXX-XXXXX-XXXXX-XXXXX" maxlength="29">
+
+            <option value="8">Every 8 hours</option>            <button class="btn btn-success" id="activateLicenseBtn" disabled>Activate</button>
+
+            <option value="24">Once daily</option>          </div>
+
+          </select>        </div>
+
+        </div>        
+
+      </div>        <button class="btn btn-danger" id="deactivateLicenseBtn" style="display: none;">Deactivate License</button>
+
       </div>
 
-    <div class="setup-actions">
+      <div class="setup-step" id="step9">
+
+        <h2>Premium License</h2>      <div class="setup-step" id="step7">
+
+        <p>Unlock advanced features with a premium license key</p>        <h2>Third Party Program Support</h2>
+
+                <p>Configure paths to external tools and programs that Constellation can launch</p>
+
+        <div id="licenseStatus" class="license-status free">        
+
+          Free version - Limited features        <div class="form-group">
+
+        </div>          <label for="astroQCPath">AstroQC Sub-Frame Analyzer</label>
+
+                  <div class="input-group">
+
+        <div class="form-group" id="licenseActions">            <input type="text" id="astroQCPath" placeholder="Path to AstroQC executable" readonly>
+
+          <label for="licenseKeyInput">License Key</label>            <button class="btn btn-secondary" id="browseAstroQCBtn">Browse</button>
+
+          <div class="input-group">          </div>
+
+            <input type="text" id="licenseKeyInput" placeholder="CONST-XXXXX-XXXXX-XXXXX-XXXXX" maxlength="29">          <p class="form-help">Select the path to your AstroQC sub-frame quality analyzer program</p>
+
+            <button class="btn btn-success" id="activateLicenseBtn" disabled>Activate</button>        </div>
+
+          </div>        
+
+        </div>        <div class="form-group">
+
+                  <button class="btn btn-primary" id="testAstroQCBtn" disabled>Test AstroQC Launch</button>
+
+        <button class="btn btn-danger" id="deactivateLicenseBtn" style="display: none;">Deactivate License</button>        </div>
+
+              </div>
+
+        <p class="hint">Skip this step to use the free version with basic features</p>
+
+      </div>      <div class="setup-step" id="step8">
+
+        <h2>Background Scanning</h2>
+
+      <div class="setup-actions">        <p>Automatically scan for new images and projects in the background</p>
+
+        <div class="left-actions">        
+
+          <span>Configure your Constellation settings</span>        <div class="checkbox-group">
+
+        </div>          <input type="checkbox" id="enableBackgroundScan" checked>
+
+        <div class="right-actions">          <label for="enableBackgroundScan">Enable automatic background scanning</label>
+
+          <button class="btn btn-primary" id="completeSetupBtn" disabled>        </div>
+
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">        
+
+              <path d="M20 6L9 17L4 12"/>        <div class="form-group" id="backgroundFrequencyGroup">
+
+            </svg>          <label for="backgroundScanHours">Scan frequency</label>
+
+            Save Settings          <select id="backgroundScanHours">
+
+          </button>            <option value="1">Every hour</option>
+
+        </div>            <option value="2">Every 2 hours</option>
+
+      </div>            <option value="4" selected>Every 4 hours</option>
+
+    </div>            <option value="8">Every 8 hours</option>
+
+  </div>            <option value="24">Once daily</option>
+
+          </select>
+
+  <script src="js/modules/modal-manager.js"></script>        </div>
+
+  <script src="js/setup.js"></script>      </div>
+
+</body>
+
+</html>    <div class="setup-actions">
+
       <div class="left-actions">
         <span>Configure your Constellation settings</span>
       </div>

@@ -375,7 +375,11 @@ class PostDetailView {
     const deleteBtn = container.querySelector('.detail-delete-btn');
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async () => {
-        if (confirm('Are you sure you want to delete this post?')) {
+        const confirmed = window.showConfirm 
+          ? await window.showConfirm('Delete Post', 'Are you sure you want to delete this post? This action cannot be undone.', 'warning')
+          : confirm('Are you sure you want to delete this post?');
+        
+        if (confirmed) {
           await this.handleDelete(this.post.id);
         }
         if (menu) menu.style.display = 'none';
@@ -583,7 +587,11 @@ class PostDetailView {
    * Handle delete comment
    */
   async handleDeleteComment(commentId) {
-    if (!confirm('Delete this comment?')) return;
+    const confirmed = window.showConfirm 
+      ? await window.showConfirm('Delete Comment', 'Are you sure you want to delete this comment?', 'warning')
+      : confirm('Delete this comment?');
+    
+    if (!confirmed) return;
 
     try {
       await window.CommunityAPI.deleteComment(commentId);
