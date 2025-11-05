@@ -99,70 +99,27 @@ function ensureLicenseManager() {
   return licenseManager;
 }
 
-// ---------- Settings Modal ----------
-async function showSettingsModal() {
-  const modal = document.getElementById('settingsModal');
-  const content = document.getElementById('settingsContent');
+// ---------- Settings View ----------
+function initializeSettingsView() {
+  console.log('Initializing Settings view');
   
-  if (!modal || !content) return;
-  
-  // Load the setup content
   try {
-    const response = await fetch('setup.html');
-    const html = await response.text();
-    
-    // Extract just the setup content (between setup-container divs)
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const setupContainer = doc.querySelector('.setup-container');
-    
-    if (setupContainer) {
-      content.innerHTML = setupContainer.innerHTML;
-      
-      // Load and execute the setup script (only once)
-      if (typeof window.setupModuleLoaded === 'undefined') {
-        const script = document.createElement('script');
-        script.src = 'js/setup.js';
-        script.onload = () => {
-          if (typeof setupModalInit === 'function') setupModalInit();
-        };
-        document.head.appendChild(script);
-      } else {
-        // Script already loaded, just initialize
-        if (typeof setupModalInit === 'function') setupModalInit();
-      }
+    if (typeof ensureSettingsView !== 'function') {
+      console.error('Settings module not loaded: ensureSettingsView is undefined. Check that settings-view.js is included.');
+      return;
     }
-    
-    // Show the modal
-    modal.style.display = 'flex';
-    
-    // Add close button handler
-    const closeBtn = document.getElementById('closeSettingsBtn');
-    if (closeBtn) {
-      closeBtn.onclick = hideSettingsModal;
+
+    const settingsView = ensureSettingsView();
+    if (settingsView) {
+      settingsView.show();
+      console.log('Settings view initialized and shown');
+    } else {
+      console.error('Failed to initialize settings view');
     }
-    
-    // Close on backdrop click
-    modal.onclick = (e) => {
-      if (e.target === modal) {
-        hideSettingsModal();
-      }
-    };
-    
   } catch (error) {
-    console.error('Failed to load settings content:', error);
+    console.error('Error initializing settings view:', error);
   }
 }
-
-function hideSettingsModal() {
-  const modal = document.getElementById('settingsModal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
-}
-
-// Make hideSettingsModal globally accessible
-window.hideSettingsModal = hideSettingsModal;
 
 // ---------- Verbose Log Helpers ----------
 function showVerboseLogModal() { const mgr = ensureLogManager(); if (mgr) mgr.showModal(targets); }
@@ -426,15 +383,14 @@ function setupEventListeners() {
   // Scan / refresh / settings
   document.getElementById('scanBtn')?.addEventListener('click', scanLibrary);
   document.getElementById('refreshBtn')?.addEventListener('click', scanLibrary);
-  document.getElementById('settingsBtn')?.addEventListener('click', showSettingsModal);
+  document.getElementById('settingsBtn')?.addEventListener('click', () => {
+    switchView('settings');
+  });
 
-  // Settings modal
-  document.getElementById('closeSettingsBtn')?.addEventListener('click', hideSettingsModal);
-  
-  // Listen for settings modal events from main process
-  window.electronAPI.onShowSettings?.(() => showSettingsModal());
-
-  // Verbose toggle
+  // Listen for settings events from main process
+  window.electronAPI.onShowSettings?.(() => {
+    switchView('settings');
+  });  // Verbose toggle
   document.getElementById('verboseToggleBtn')?.addEventListener('click', () => {
     const mgr = ensureLogManager();
     const newState = !mgr.isVerbose();
@@ -531,6 +487,8 @@ function switchView(view) {
     initializeSocialView();
   } else if (view === 'solarSim') {
     initializeSolarSim();
+  } else if (view === 'settings') {
+    initializeSettingsView();
   }
   
   console.log(`Switched to view: ${viewId}`);

@@ -126,15 +126,20 @@ function createWindow() {
   // Check if first run
   const isFirstRun = !store.has('settings.storagePath');
   
-  if (isFirstRun) {
-    mainWindow.loadFile('renderer/setup.html');
-  } else {
-    mainWindow.loadFile('renderer/index.html');
-  }
+  mainWindow.loadFile('renderer/index.html');
 
   // Initialize auto-updater after window is created
   mainWindow.webContents.on('did-finish-load', () => {
     initAutoUpdater(mainWindow);
+    
+    // If first run, show settings view
+    if (isFirstRun) {
+      mainWindow.webContents.executeJavaScript(`
+        if (typeof switchView === 'function') {
+          switchView('settings');
+        }
+      `);
+    }
   });
 
   // Uncomment the line below if you need developer tools for debugging by default
