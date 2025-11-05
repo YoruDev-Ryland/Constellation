@@ -102,7 +102,15 @@
         }
       ],
       "category": "Graphics",
-      "icon": "build/icon.png"
+      "icon": "build/icons",
+      "desktop": {
+        "Name": "Constellation",
+        "Comment": "Astrophotography file organization and tracking",
+        "GenericName": "Astrophotography Manager",
+        "Categories": "Graphics;Photography;Science;",
+        "StartupWMClass": "Constellation"
+      },
+      "executableName": "constellation"
     },
     "nsis": {
       "oneClick": false,
