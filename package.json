@@ -1,6 +1,6 @@
 {
   "name": "constellation",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Astrophotography file organization and tracking",
   "main": "main.js",
   "author": "Starloch <support@starloch.com>",
