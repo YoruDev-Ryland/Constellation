@@ -171,7 +171,8 @@ ipcMain.handle('save-settings', (event, settings) => {
 });
 
 ipcMain.handle('select-directory', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
+  const focusedWindow = BrowserWindow.getFocusedWindow() || mainWindow;
+  const result = await dialog.showOpenDialog(focusedWindow, {
     properties: ['openDirectory']
   });
   return result.canceled ? null : result.filePaths[0];
@@ -1065,7 +1066,8 @@ function extractFilterFromFilename(filename) {
 
 ipcMain.handle('select-file', async (event, options) => {
   try {
-    const result = await dialog.showOpenDialog(mainWindow, {
+    const focusedWindow = BrowserWindow.getFocusedWindow() || mainWindow;
+    const result = await dialog.showOpenDialog(focusedWindow, {
       title: options.title || 'Select File',
       filters: options.filters || [],
       properties: ['openFile']
@@ -1079,7 +1081,8 @@ ipcMain.handle('select-file', async (event, options) => {
 
 ipcMain.handle('select-folder', async (event, options) => {
   try {
-    const result = await dialog.showOpenDialog(mainWindow, {
+    const focusedWindow = BrowserWindow.getFocusedWindow() || mainWindow;
+    const result = await dialog.showOpenDialog(focusedWindow, {
       title: options.title || 'Select Folder',
       properties: ['openDirectory']
     });
@@ -1093,7 +1096,8 @@ ipcMain.handle('select-folder', async (event, options) => {
 // Save file dialog
 ipcMain.handle('save-file', async (event, options) => {
   try {
-    const result = await dialog.showSaveDialog(mainWindow, {
+    const focusedWindow = BrowserWindow.getFocusedWindow() || mainWindow;
+    const result = await dialog.showSaveDialog(focusedWindow, {
       title: options.title || 'Save File',
       defaultPath: options.defaultPath || 'untitled',
       filters: options.filters || []
