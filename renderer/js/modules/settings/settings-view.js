@@ -742,6 +742,11 @@
         // Save to electron
         await window.electronAPI.saveSettings(this.settings);
 
+        // Reload settings in the main app
+        if (typeof window.settings !== 'undefined') {
+          window.settings = await window.electronAPI.getSettings();
+        }
+
         // Notify success
         if (window.showAlert) {
           await window.showAlert('Settings Saved', 'Your settings have been saved successfully!', 'success');

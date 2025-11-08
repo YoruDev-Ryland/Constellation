@@ -173,9 +173,27 @@ async function scanLibrary() {
     scanBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Scanning...';
   }
   try {
+    // Check if storage path is set
+    if (!settings.storagePath) {
+      console.error('Storage path not set');
+      if (window.showAlert) {
+        await window.showAlert('Storage Path Not Set', 'Please configure your library path in Settings before scanning.', 'warning');
+      } else {
+        alert('Please configure your library path in Settings before scanning.');
+      }
+      if (scanBtn) {
+        scanBtn.disabled = false;
+        scanBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Scan Library';
+      }
+      return;
+    }
+    
     // Scan main library
+    console.log('Starting library scan:', settings.storagePath);
     targets = await scanner.scan(settings.storagePath);
+    console.log('Scan completed, found targets:', targets.length);
     await synchronizeProjectsFromTargets();
+    console.log('After sync, projects count:', projects.length);
     
     // Scan archive folder for completed projects (if configured)
     if (settings.archivePath && settings.archivePath.trim() !== '') {
@@ -262,13 +280,32 @@ async function scanLibrary() {
       await persistArchiveLibrary();
     }
     
+    console.log('Rendering views with', targets.length, 'targets and', projects.length, 'projects');
     renderDashboard();
     renderProjects();
     renderCleanup();
+    
+    // Force refresh the project manager's internal state
+    ensureProjectManager().setProjects(projects);
+    
+    // Show success notification
+    if (window.showAlert) {
+      await window.showAlert(
+        'Scan Complete', 
+        `Found ${targets.length} target${targets.length !== 1 ? 's' : ''} and ${projects.length} project${projects.length !== 1 ? 's' : ''}`,
+        'success'
+      );
+    }
+    
     const mgr = ensureLogManager();
     if (mgr.isVerbose()) mgr.showModal(targets);
   } catch (err) {
     console.error('Error scanning:', err);
+    if (window.showAlert) {
+      await window.showAlert('Scan Error', `Failed to scan library: ${err.message || 'Unknown error'}`, 'error');
+    } else {
+      alert(`Failed to scan library: ${err.message || 'Unknown error'}`);
+    }
   } finally {
     if (scanBtn) {
       scanBtn.disabled = false;
